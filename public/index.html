@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Orima</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <!-- LANDING -->
+  <div class="landing" id="landing">
+    <div class="gradient-bg">
+      <div class="orb orb-1"></div>
+      <div class="orb orb-2"></div>
+      <div class="orb orb-3"></div>
+    </div>
+    <div class="landing-content">
+      <div class="logo-wrap">
+        <img src="https://ik.imagekit.io/fuagv7oun/orimanew.png" alt="Orima" class="logo-img-lg">
+        <div class="logo-orb"></div>
+        <div class="logo-orb"></div>
+        <div class="logo-orb"></div>
+        <div class="logo-orb"></div>
+        <div class="logo-orb"></div>
+        <div class="logo-orb"></div>
+        <div class="logo-orb"></div>
+        <div class="logo-orb"></div>
+        <div class="logo-orb"></div>
+      </div>
+      <div class="search-box">
+        <svg class="s-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+        <input type="text" id="searchInput" placeholder="Cari lagu, artis, atau genre..." autocomplete="off" spellcheck="false">
+        <button class="search-go" id="searchBtn">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
+        </button>
+      </div>
+      <div class="credit-text">Created by Manusiawhy</div>
+    </div>
+  </div>
+
+  <!-- RESULTS -->
+  <div class="results-page hidden" id="resultsPage">
+    <div class="gradient-bg small">
+      <div class="orb orb-1"></div>
+      <div class="orb orb-2"></div>
+    </div>
+    <header class="r-header">
+      <div class="r-logo" id="goHome">
+        <img src="https://ik.imagekit.io/fuagv7oun/orimanew.png" alt="Orima" class="r-logo-img">
+      </div>
+      <div class="r-search">
+        <svg class="s-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+        <input type="text" id="searchInput2" placeholder="Cari lagu..." autocomplete="off" spellcheck="false">
+        <button class="search-go" id="searchBtn2">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
+        </button>
+      </div>
+    </header>
+    <div class="r-body" id="rBody">
+      <div class="r-title" id="rTitle"></div>
+      <div class="r-nav hidden" id="rNav">
+        <button class="r-back" id="rBack">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg>
+          <span id="rBackText">Kembali</span>
+        </button>
+      </div>
+      <div class="r-tabs" id="rTabs">
+        <button class="r-tab active" data-f="all">Semua</button>
+        <button class="r-tab" data-f="artist">Artis</button>
+        <button class="r-tab" data-f="album">Album</button>
+      </div>
+      <div class="loading hidden" id="loading">
+        <div class="ld"><span></span><span></span><span></span></div>
+        <p>Memuat lagu....</p>
+      </div>
+      <div class="r-grid" id="rGrid"></div>
+    </div>
+  </div>
+
+  <!-- PLAYER -->
+  <div class="player hidden" id="player">
+    <div class="player-buffer hidden" id="playerBuffer">
+      <div class="ld"><span></span><span></span><span></span></div>
+      <span>Buffering...</span>
+    </div>
+    <div class="p-left">
+      <div class="p-thumb" id="pThumb"><img src="" alt=""></div>
+      <div class="p-meta">
+        <div class="p-title" id="pTitle">-</div>
+        <div class="p-artist" id="pArtist">-</div>
+      </div>
+    </div>
+    <div class="p-center">
+      <div class="p-btns">
+        <button class="pb" id="prevBtn">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M6 6h2v12H6zm3.5 6l8.5 6V6z"/></svg>
+        </button>
+        <button class="pb play" id="playBtn">
+          <svg class="ico-play" width="22" height="22" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
+          <svg class="ico-pause" style="display:none" width="22" height="22" viewBox="0 0 24 24" fill="currentColor"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg>
+        </button>
+        <button class="pb" id="nextBtn">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M6 18l8.5-6L6 6v12zM16 6v12h2V6h-2z"/></svg>
+        </button>
+      </div>
+      <div class="p-bar-wrap">
+        <span class="p-time" id="curTime">0:00</span>
+        <div class="p-bar" id="pBar">
+          <div class="p-bar-fill" id="pBarFill"></div>
+        </div>
+        <span class="p-time" id="durTime">0:00</span>
+      </div>
+    </div>
+    <div class="p-right">
+      <button class="pb sm" id="lyricsBtn" title="Lyrics">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M14 2H6c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V8l-6-6zM6 20V4h7v5h5v11H6zm2-6h8v2H8v-2zm0-4h8v2H8v-2z"/></svg>
+      </button>
+      <button class="pb sm" id="volBtn">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02zM14 3.23v2.06c2.89.86 5 3.54 5 6.71s-2.11 5.85-5 6.71v2.06c4.01-.91 7-4.49 7-8.77s-2.99-7.86-7-8.77z"/></svg>
+      </button>
+      <div class="p-vol" id="pVol">
+        <div class="p-vol-fill" id="pVolFill"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- LYRICS MODAL -->
+  <div class="lyrics-modal hidden" id="lyricsModal">
+    <div class="lyrics-backdrop" id="lyricsBackdrop"></div>
+    <div class="lyrics-panel">
+      <div class="lyrics-header">
+        <div class="lyrics-info">
+          <div class="lyrics-title" id="lyricsTitle">-</div>
+          <div class="lyrics-artist" id="lyricsArtist">-</div>
+        </div>
+        <button class="lyrics-close" id="lyricsClose">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </div>
+      <div class="lyrics-body" id="lyricsBody">
+        <div class="lyrics-loading">Memuat lyrics...</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- FULLSCREEN PLAYER -->
+  <div class="fs-player hidden" id="fsPlayer">
+    <div class="fs-bg" id="fsBg"><img src="" alt="" id="fsBgImg"></div>
+    <div class="fs-top">
+      <button class="fs-close" id="fsClose">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor"><path d="M7.41 8.59L12 13.17l4.59-4.58L18 10l-6 6-6-6z"/></svg>
+      </button>
+      <div class="fs-from">Sedang diputar</div>
+    </div>
+    <div class="fs-center">
+      <div class="fs-cover-wrap" id="fsCoverWrap">
+        <img class="fs-cover" id="fsCover" src="" alt="">
+        <div class="fs-cover-overlay" id="fsCoverOverlay">
+          <div class="fs-lyrics-scroll" id="fsLyricsScroll"></div>
+        </div>
+      </div>
+      <button class="fs-lyrics-toggle" id="fsLyricsToggle">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M14 2H6c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V8l-6-6zM6 20V4h7v5h5v11H6z"/></svg>
+        <span id="fsLyricsToggleText">Lihat Lirik</span>
+      </button>
+    </div>
+    <div class="fs-info">
+      <div class="fs-title" id="fsTitle">-</div>
+      <div class="fs-artist" id="fsArtist">-</div>
+    </div>
+    <div class="fs-progress">
+      <div class="fs-bar" id="fsBar">
+        <div class="fs-bar-fill" id="fsBarFill"></div>
+      </div>
+      <div class="fs-times">
+        <span id="fsCurTime">0:00</span>
+        <span id="fsDurTime">0:00</span>
+      </div>
+    </div>
+    <div class="fs-controls">
+      <button class="fs-btn" id="fsPrev">
+        <svg width="28" height="28" viewBox="0 0 24 24" fill="currentColor"><path d="M6 6h2v12H6zm3.5 6l8.5 6V6z"/></svg>
+      </button>
+      <button class="fs-btn fs-play" id="fsPlayBtn">
+        <svg class="fs-ico-play" width="36" height="36" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
+        <svg class="fs-ico-pause" style="display:none" width="36" height="36" viewBox="0 0 24 24" fill="currentColor"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg>
+      </button>
+      <button class="fs-btn" id="fsNext">
+        <svg width="28" height="28" viewBox="0 0 24 24" fill="currentColor"><path d="M6 18l8.5-6L6 6v12zM16 6v12h2V6h-2z"/></svg>
+      </button>
+    </div>
+  </div>
+
+  <audio id="audioEl" preload="auto"></audio>
+  <script src="script.js"></script>
+</body>
+</html>

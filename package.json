@@ -1,0 +1,26 @@
+{
+  "name": "orima",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "build:client": "esbuild src/client.ts --bundle --minify --outfile=public/script.js",
+    "build": "npm run build:client",
+    "dev": "npm run build:client && tsx watch src/server.ts",
+    "start": "npm run build:client && tsx src/server.ts"
+  },
+  "dependencies": {
+    "axios": "^1.7.9",
+    "cors": "^2.8.5",
+    "express": "^4.21.2",
+    "youtube-dl-exec": "^3.0.12",
+    "youtubei.js": "^17.0.1"
+  },
+  "devDependencies": {
+    "@types/cors": "^2.8.17",
+    "@types/express": "^5.0.1",
+    "@types/node": "^22.14.1",
+    "esbuild": "^0.25.2",
+    "tsx": "^4.19.4",
+    "typescript": "^5.8.3"
+  }
+}

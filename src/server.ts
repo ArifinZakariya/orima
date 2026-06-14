@@ -84,7 +84,7 @@ app.get('/api/search', async (req: Request, res: Response) => {
 });
 
 app.get('/api/album/:id', async (req: Request, res: Response) => {
-  const albumId = parseInt(req.params.id);
+  const albumId = parseInt(String(req.params.id));
   if (!albumId) { res.status(400).json({ error: 'Invalid album ID' }); return; }
 
   try {

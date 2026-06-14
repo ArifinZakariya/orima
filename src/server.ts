@@ -303,6 +303,6 @@ app.get('*', (_req: Request, res: Response) => {
   res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
 
-app.listen(PORT, () => {
+app.listen(PORT, '0.0.0.0', () => {
   console.log(`\x1b[1;32m  ♪ Orima running at http://localhost:${PORT}  \x1b[0m`);
 });

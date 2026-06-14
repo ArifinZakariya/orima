@@ -4,7 +4,7 @@ import path from 'path';
 import { spawn } from 'child_process';
 
 const app = express();
-const PORT = 5000;
+const PORT = parseInt(process.env.PORT || '3000');
 const __dirname = path.resolve();
 
 app.use(cors());

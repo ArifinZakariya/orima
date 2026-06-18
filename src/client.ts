@@ -102,6 +102,7 @@ let currentActiveIdx = -1;
 let shuffleOn = false;
 let repeatMode: 'off' | 'all' | 'one' = 'off';
 let viewMode: 'grid' | 'list' = 'grid';
+let isSeeking = false;
 audio.volume = volume;
 
 function fmt(s: number): string {
@@ -620,6 +621,7 @@ audio.addEventListener('loadedmetadata', () => {
 });
 
 audio.addEventListener('ended', () => {
+  if (isSeeking) return;
   if (repeatMode === 'one') {
     audio.currentTime = 0;
     audio.play();
@@ -769,18 +771,20 @@ function initBarDrag(bar: HTMLElement, onSeek: (pct: number) => void) {
   function seek(e: MouseEvent | TouchEvent) {
     const r = bar.getBoundingClientRect();
     const clientX = 'touches' in e ? e.touches[0].clientX : e.clientX;
-    const pct = Math.max(0, Math.min(1, (clientX - r.left) / r.width));
+    const pct = Math.max(0, Math.min(0.995, (clientX - r.left) / r.width));
     onSeek(pct);
   }
 
   bar.addEventListener('mousedown', (e) => {
     dragging = true;
+    isSeeking = true;
     bar.classList.add('dragging');
     seek(e);
   });
 
   bar.addEventListener('touchstart', (e) => {
     dragging = true;
+    isSeeking = true;
     bar.classList.add('dragging');
     seek(e);
   }, { passive: true });
@@ -799,6 +803,7 @@ function initBarDrag(bar: HTMLElement, onSeek: (pct: number) => void) {
     if (dragging) {
       dragging = false;
       bar.classList.remove('dragging');
+      setTimeout(() => { isSeeking = false; }, 200);
     }
   });
 
@@ -806,6 +811,7 @@ function initBarDrag(bar: HTMLElement, onSeek: (pct: number) => void) {
     if (dragging) {
       dragging = false;
       bar.classList.remove('dragging');
+      setTimeout(() => { isSeeking = false; }, 200);
     }
   });
 }

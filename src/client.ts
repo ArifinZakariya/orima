@@ -75,6 +75,16 @@ const fsLyricsToggle = document.getElementById('fsLyricsToggle') as HTMLButtonEl
 const fsLyricsToggleText = document.getElementById('fsLyricsToggleText') as HTMLSpanElement;
 const fsIcoPlay = fsPlayBtn.querySelector('.fs-ico-play') as SVGSVGElement;
 const fsIcoPause = fsPlayBtn.querySelector('.fs-ico-pause') as SVGSVGElement;
+const shuffleBtn = document.getElementById('shuffleBtn') as HTMLButtonElement;
+const repeatBtn = document.getElementById('repeatBtn') as HTMLButtonElement;
+const repeatBadge = document.getElementById('repeatBadge') as HTMLSpanElement;
+const fsShuffleBtn = document.getElementById('fsShuffleBtn') as HTMLButtonElement;
+const fsRepeatBtn = document.getElementById('fsRepeatBtn') as HTMLButtonElement;
+const fsRepeatBadge = document.getElementById('fsRepeatBadge') as HTMLSpanElement;
+const rActions = document.getElementById('rActions') as HTMLDivElement;
+const playAllBtn = document.getElementById('playAllBtn') as HTMLButtonElement;
+const shuffleAllBtn = document.getElementById('shuffleAllBtn') as HTMLButtonElement;
+const viewToggle = document.getElementById('viewToggle') as HTMLDivElement;
 
 interface LrcLine { time: number; text: string; }
 
@@ -89,6 +99,9 @@ let lyricsOpen = false;
 let fsOpen = false;
 let fsShowLyrics = false;
 let currentActiveIdx = -1;
+let shuffleOn = false;
+let repeatMode: 'off' | 'all' | 'one' = 'off';
+let viewMode: 'grid' | 'list' = 'grid';
 audio.volume = volume;
 
 function fmt(s: number): string {
@@ -142,6 +155,10 @@ function pushNav(label: string) {
 }
 
 function renderCards(tracks: Track[]) {
+  if (viewMode === 'list') {
+    renderList(tracks);
+    return;
+  }
   rGrid.className = 'r-grid';
   rGrid.innerHTML = tracks.map((t, i) => `
     <div class="card" data-i="${i}">
@@ -154,6 +171,37 @@ function renderCards(tracks: Track[]) {
       </div>
       <div class="card-title">${esc(t.title)}</div>
       <div class="card-sub">${esc(t.artist)} · ${t.duration}</div>
+    </div>`).join('');
+
+  rGrid.querySelectorAll('.card').forEach(card => {
+    card.addEventListener('click', () => {
+      const i = parseInt((card as HTMLElement).dataset.i || '0');
+      queue = [...tracks];
+      queueIdx = i;
+      playCurrent();
+    });
+  });
+
+  highlightPlaying();
+}
+
+function renderList(tracks: Track[]) {
+  rGrid.className = 'r-grid list-view';
+  rGrid.innerHTML = tracks.map((t, i) => `
+    <div class="card" data-i="${i}">
+      <div class="card-num">${i + 1}</div>
+      <div class="card-img-wrap">
+        <img class="card-img" src="${t.thumb}" alt="" loading="lazy"
+          onerror="this.style.background='#1a1a2e'; this.src='data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 1 1%22><rect fill=%22%231a1a2e%22 width=%221%22 height=%221%22/></svg>'">
+        <button class="card-play" data-i="${i}">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
+        </button>
+      </div>
+      <div class="card-info">
+        <div class="card-title">${esc(t.title)}</div>
+        <div class="card-sub">${esc(t.artist)}</div>
+      </div>
+      <div class="card-dur">${t.duration}</div>
     </div>`).join('');
 
   rGrid.querySelectorAll('.card').forEach(card => {
@@ -485,10 +533,12 @@ async function doSearch(q: string) {
     if (data.results?.length) {
       rTitle.textContent = `Hasil: "${q}"`;
       allTracks = data.results;
+      rActions.classList.remove('hidden');
       applyFilter(activeFilter);
     } else {
       rTitle.textContent = '';
       allTracks = [];
+      rActions.classList.add('hidden');
       rGrid.innerHTML = '<div style="grid-column:1/-1;text-align:center;padding:60px;color:#666">Tidak ditemukan hasil</div>';
     }
   } catch {
@@ -570,8 +620,18 @@ audio.addEventListener('loadedmetadata', () => {
 });
 
 audio.addEventListener('ended', () => {
-  if (queueIdx < queue.length - 1) { queueIdx++; playCurrent(); }
-  else {
+  if (repeatMode === 'one') {
+    audio.currentTime = 0;
+    audio.play();
+    return;
+  }
+  if (queueIdx < queue.length - 1) {
+    queueIdx++;
+    playCurrent();
+  } else if (repeatMode === 'all') {
+    queueIdx = 0;
+    playCurrent();
+  } else {
     icoPlay.style.display = '';
     icoPause.style.display = 'none';
     pBarFill.style.width = '0%';
@@ -579,11 +639,7 @@ audio.addEventListener('ended', () => {
   }
 });
 
-pBar.addEventListener('click', (e: MouseEvent) => {
-  if (!audio.duration) return;
-  const r = pBar.getBoundingClientRect();
-  audio.currentTime = ((e.clientX - r.left) / r.width) * audio.duration;
-});
+// pBar and fsBar click/drag handled by initBarDrag below
 
 pVol.addEventListener('click', (e: MouseEvent) => {
   const r = pVol.getBoundingClientRect();
@@ -625,11 +681,7 @@ fsNext.addEventListener('click', () => {
   if (queueIdx < queue.length - 1) { queueIdx++; playCurrent(); }
 });
 
-fsBar.addEventListener('click', (e: MouseEvent) => {
-  if (!audio.duration) return;
-  const r = fsBar.getBoundingClientRect();
-  audio.currentTime = ((e.clientX - r.left) / r.width) * audio.duration;
-});
+// fsBar click/drag handled by initBarDrag below
 
 fsLyricsToggle.addEventListener('click', toggleFsLyrics);
 
@@ -638,4 +690,132 @@ document.addEventListener('keydown', (e) => {
     if (fsOpen) closeFs();
     else if (lyricsOpen) closeLyrics();
   }
+});
+
+// ===== SHUFFLE =====
+function toggleShuffle() {
+  shuffleOn = !shuffleOn;
+  shuffleBtn.classList.toggle('active', shuffleOn);
+  fsShuffleBtn.classList.toggle('active', shuffleOn);
+  if (shuffleOn && queue.length > 1) {
+    const current = queue[queueIdx];
+    const rest = queue.filter((_, i) => i !== queueIdx);
+    for (let i = rest.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [rest[i], rest[j]] = [rest[j], rest[i]];
+    }
+    queue = [current, ...rest];
+    queueIdx = 0;
+  }
+}
+
+shuffleBtn.addEventListener('click', toggleShuffle);
+fsShuffleBtn.addEventListener('click', toggleShuffle);
+
+// ===== REPEAT =====
+function updateRepeatUI() {
+  repeatBtn.classList.toggle('active', repeatMode !== 'off');
+  fsRepeatBtn.classList.toggle('active', repeatMode !== 'off');
+  repeatBadge.classList.toggle('hidden', repeatMode !== 'one');
+  fsRepeatBadge.classList.toggle('hidden', repeatMode !== 'one');
+}
+
+function toggleRepeat() {
+  if (repeatMode === 'off') repeatMode = 'all';
+  else if (repeatMode === 'all') repeatMode = 'one';
+  else repeatMode = 'off';
+  updateRepeatUI();
+}
+
+repeatBtn.addEventListener('click', toggleRepeat);
+fsRepeatBtn.addEventListener('click', toggleRepeat);
+
+// ===== PLAY ALL / SHUFFLE ALL =====
+playAllBtn.addEventListener('click', () => {
+  if (!allTracks.length) return;
+  queue = [...allTracks];
+  queueIdx = 0;
+  playCurrent();
+});
+
+shuffleAllBtn.addEventListener('click', () => {
+  if (!allTracks.length) return;
+  queue = [...allTracks];
+  for (let i = queue.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [queue[i], queue[j]] = [queue[j], queue[i]];
+  }
+  queueIdx = 0;
+  playCurrent();
+});
+
+// ===== VIEW TOGGLE =====
+viewToggle.addEventListener('click', (e: MouseEvent) => {
+  const btn = (e.target as HTMLElement).closest('.vt-btn') as HTMLElement;
+  if (!btn) return;
+  const v = btn.dataset.v as 'grid' | 'list';
+  if (v === viewMode) return;
+  viewMode = v;
+  viewToggle.querySelectorAll('.vt-btn').forEach(b => b.classList.toggle('active', (b as HTMLElement).dataset.v === v));
+  if (allTracks.length) {
+    if (activeFilter === 'all') renderCards(allTracks);
+  }
+});
+
+// ===== DRAG / SCRUB PROGRESS BAR =====
+function initBarDrag(bar: HTMLElement, onSeek: (pct: number) => void) {
+  let dragging = false;
+
+  function seek(e: MouseEvent | TouchEvent) {
+    const r = bar.getBoundingClientRect();
+    const clientX = 'touches' in e ? e.touches[0].clientX : e.clientX;
+    const pct = Math.max(0, Math.min(1, (clientX - r.left) / r.width));
+    onSeek(pct);
+  }
+
+  bar.addEventListener('mousedown', (e) => {
+    dragging = true;
+    bar.classList.add('dragging');
+    seek(e);
+  });
+
+  bar.addEventListener('touchstart', (e) => {
+    dragging = true;
+    bar.classList.add('dragging');
+    seek(e);
+  }, { passive: true });
+
+  document.addEventListener('mousemove', (e) => {
+    if (!dragging) return;
+    seek(e);
+  });
+
+  document.addEventListener('touchmove', (e) => {
+    if (!dragging) return;
+    seek(e);
+  }, { passive: true });
+
+  document.addEventListener('mouseup', () => {
+    if (dragging) {
+      dragging = false;
+      bar.classList.remove('dragging');
+    }
+  });
+
+  document.addEventListener('touchend', () => {
+    if (dragging) {
+      dragging = false;
+      bar.classList.remove('dragging');
+    }
+  });
+}
+
+initBarDrag(pBar, (pct) => {
+  if (!audio.duration) return;
+  audio.currentTime = pct * audio.duration;
+});
+
+initBarDrag(fsBar, (pct) => {
+  if (!audio.duration) return;
+  audio.currentTime = pct * audio.duration;
 });

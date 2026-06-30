@@ -3,7 +3,7 @@ import cors from 'cors';
 import path from 'path';
 import fs from 'fs';
 import os from 'os';
-import { spawn, execFile } from 'child_process';
+import { spawn } from 'child_process';
 import crypto from 'crypto';
 
 const app = express();
@@ -272,24 +272,53 @@ app.get('/api/stream', (req: Request, res: Response) => {
     '--concurrent-fragments', '4',
     '-f', 'bestaudio',
     '--match-filter', 'is_live!=true',
-    '-o', outPath,
+    '-o', '-',
     `ytsearch1:${query} official audio`,
   ], { stdio: ['ignore', 'pipe', 'pipe'] });
 
   streamProcesses.set(hash, ytdlp);
 
+  let headersSent = false;
   let done = false;
+  const fileStream = fs.createWriteStream(outPath);
+
+  const cleanup = () => {
+    if (!fileStream.destroyed) fileStream.end();
+    streamProcesses.delete(hash);
+  };
+
+  ytdlp.stdout.on('data', (chunk: Buffer) => {
+    if (done) return;
+    if (!headersSent) {
+      headersSent = true;
+      res.setHeader('Content-Type', 'audio/webm');
+      res.setHeader('Accept-Ranges', 'bytes');
+      res.setHeader('Access-Control-Allow-Origin', '*');
+      res.status(200);
+      res.flushHeaders();
+    }
+    res.write(chunk);
+    fileStream.write(chunk);
+  });
+
+  ytdlp.stdout.on('end', () => {
+    fileStream.end();
+    if (!done) {
+      done = true;
+      console.log('[stream] done');
+      if (headersSent && !res.writableEnded) res.end();
+    }
+    cleanup();
+  });
 
   ytdlp.on('close', (code) => {
-    streamProcesses.delete(hash);
-    if (done) return;
-    done = true;
     console.log('[stream] exit', code);
-    if (fs.existsSync(outPath)) {
-      serveFile();
-    } else {
-      res.status(500).json({ error: 'Tidak ada data audio' });
+    if (!done) {
+      done = true;
+      if (!headersSent) res.status(500).json({ error: 'Tidak ada data audio' });
+      else if (!res.writableEnded) res.end();
     }
+    cleanup();
   });
 
   ytdlp.stderr.on('data', (d: Buffer) => {
@@ -301,8 +330,10 @@ app.get('/api/stream', (req: Request, res: Response) => {
     console.error('[stream err]', err.message);
     if (!done) {
       done = true;
-      res.status(500).json({ error: 'Gagal stream' });
+      if (!headersSent) res.status(500).json({ error: 'Gagal stream' });
+      else res.end();
     }
+    cleanup();
   });
 
   req.on('close', () => {
@@ -310,6 +341,7 @@ app.get('/api/stream', (req: Request, res: Response) => {
       ytdlp.kill('SIGTERM');
       console.log('[stream] client disconnected');
     }
+    cleanup();
   });
 });
 

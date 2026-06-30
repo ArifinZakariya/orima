@@ -1,11 +1,17 @@
 import express, { Request, Response } from 'express';
 import cors from 'cors';
 import path from 'path';
-import { spawn } from 'child_process';
+import fs from 'fs';
+import os from 'os';
+import { spawn, execFile } from 'child_process';
+import crypto from 'crypto';
 
 const app = express();
 const PORT = parseInt(process.env.PORT || '3000');
 const __dirname = path.resolve();
+const TEMP_DIR = path.join(os.tmpdir(), 'orima-streams');
+
+if (!fs.existsSync(TEMP_DIR)) fs.mkdirSync(TEMP_DIR, { recursive: true });
 
 app.use(cors());
 
@@ -207,9 +213,55 @@ function parseLrc(raw: string): LrcLine[] {
   return lines;
 }
 
+const streamProcesses = new Map<string, import('child_process').ChildProcess>();
+
+function getContentType(filePath: string): string {
+  if (filePath.endsWith('.webm')) return 'audio/webm';
+  if (filePath.endsWith('.m4a')) return 'audio/mp4';
+  if (filePath.endsWith('.opus')) return 'audio/opus';
+  if (filePath.endsWith('.mp3')) return 'audio/mpeg';
+  return 'audio/webm';
+}
+
 app.get('/api/stream', (req: Request, res: Response) => {
   const query = (req.query.q as string || '').trim();
   if (!query) { res.status(400).json({ error: 'Query kosong' }); return; }
+
+  const hash = crypto.createHash('md5').update(query).digest('hex');
+  const outPath = path.join(TEMP_DIR, `${hash}.webm`);
+
+  const serveFile = () => {
+    const stat = fs.statSync(outPath);
+    const fileSize = stat.size;
+    const contentType = getContentType(outPath);
+
+    res.setHeader('Accept-Ranges', 'bytes');
+    res.setHeader('Access-Control-Allow-Origin', '*');
+    res.setHeader('Content-Type', contentType);
+
+    const range = req.headers.range;
+    if (range) {
+      const parts = range.replace(/bytes=/, '').split('-');
+      const start = parseInt(parts[0], 10);
+      const end = parts[1] ? parseInt(parts[1], 10) : fileSize - 1;
+      const chunkSize = end - start + 1;
+
+      res.writeHead(206, {
+        'Content-Range': `bytes ${start}-${end}/${fileSize}`,
+        'Content-Length': chunkSize,
+      });
+      fs.createReadStream(outPath, { start, end }).pipe(res);
+    } else {
+      res.writeHead(200, { 'Content-Length': fileSize });
+      fs.createReadStream(outPath).pipe(res);
+    }
+  };
+
+  if (fs.existsSync(outPath)) {
+    console.log('[stream] cache hit:', query);
+    serveFile();
+    return;
+  }
 
   console.log('[stream]', query);
 
@@ -220,47 +272,23 @@ app.get('/api/stream', (req: Request, res: Response) => {
     '--concurrent-fragments', '4',
     '-f', 'bestaudio',
     '--match-filter', 'is_live!=true',
-    '-o', '-',
+    '-o', outPath,
     `ytsearch1:${query} official audio`,
   ], { stdio: ['ignore', 'pipe', 'pipe'] });
 
-  let headersSent = false;
-  let bytesWritten = 0;
+  streamProcesses.set(hash, ytdlp);
 
-  const onFirstData = (chunk: Buffer) => {
-    if (!headersSent) {
-      headersSent = true;
-      res.setHeader('Content-Type', 'audio/webm');
-      res.setHeader('Transfer-Encoding', 'chunked');
-      res.setHeader('Accept-Ranges', 'bytes');
-      res.setHeader('Access-Control-Allow-Origin', '*');
-      res.status(200);
-      res.flushHeaders();
-    }
-    bytesWritten += chunk.length;
-    res.write(chunk);
-  };
-
-  ytdlp.stdout.on('data', (chunk: Buffer) => {
-    if (!headersSent) {
-      onFirstData(chunk);
-    } else {
-      bytesWritten += chunk.length;
-      res.write(chunk);
-    }
-  });
-
-  ytdlp.stdout.on('end', () => {
-    console.log('[stream] done,', bytesWritten, 'bytes');
-    if (headersSent) res.end();
-  });
+  let done = false;
 
   ytdlp.on('close', (code) => {
+    streamProcesses.delete(hash);
+    if (done) return;
+    done = true;
     console.log('[stream] exit', code);
-    if (!headersSent) {
+    if (fs.existsSync(outPath)) {
+      serveFile();
+    } else {
       res.status(500).json({ error: 'Tidak ada data audio' });
-    } else if (!res.writableEnded) {
-      res.end();
     }
   });
 
@@ -271,8 +299,10 @@ app.get('/api/stream', (req: Request, res: Response) => {
 
   ytdlp.on('error', (err) => {
     console.error('[stream err]', err.message);
-    if (!headersSent) res.status(500).json({ error: 'Gagal stream' });
-    else res.end();
+    if (!done) {
+      done = true;
+      res.status(500).json({ error: 'Gagal stream' });
+    }
   });
 
   req.on('close', () => {

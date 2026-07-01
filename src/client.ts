@@ -34,6 +34,7 @@ interface UserProfile {
 interface Playlist {
   id: string;
   name: string;
+  cover_url: string;
   created_at: string;
 }
 
@@ -183,6 +184,25 @@ const savePlaylistBtn = document.getElementById('savePlaylistBtn') as HTMLButton
 const fsLikeBtn = document.getElementById('fsLikeBtn') as HTMLButtonElement;
 const fsPlaylistBtn = document.getElementById('fsPlaylistBtn') as HTMLButtonElement;
 
+// Shared playlist page elements
+const sharedPlaylistPage = document.getElementById('sharedPlaylistPage') as HTMLDivElement;
+const sharedPlaylistTitle = document.getElementById('sharedPlaylistTitle') as HTMLDivElement;
+const sharedPlaylistHeader = document.getElementById('sharedPlaylistHeader') as HTMLDivElement;
+const sharedPlaylistGrid = document.getElementById('sharedPlaylistGrid') as HTMLDivElement;
+const sharedPlaylistBack = document.getElementById('sharedPlaylistBack') as HTMLButtonElement;
+const sharedPlaylistPlay = document.getElementById('sharedPlaylistPlay') as HTMLButtonElement;
+const sharedPlaylistShuffle = document.getElementById('sharedPlaylistShuffle') as HTMLButtonElement;
+const sharedPlaylistCopy = document.getElementById('sharedPlaylistCopy') as HTMLButtonElement;
+const goHomeShared = document.getElementById('goHomeShared') as HTMLDivElement;
+
+// Playlist cover upload elements
+const playlistCoverInput = document.getElementById('playlistCoverInput') as HTMLInputElement;
+const playlistCoverPreview = document.getElementById('playlistCoverPreview') as HTMLDivElement;
+const createPlaylistModalTitle = document.getElementById('createPlaylistModalTitle') as HTMLHeadingElement;
+
+// Playlist share button
+const playlistDetailShare = document.getElementById('playlistDetailShare') as HTMLButtonElement;
+
 // Sidebar elements
 const sidebarOverlay = document.getElementById('sidebarOverlay') as HTMLDivElement;
 const sidebar = document.getElementById('sidebar') as HTMLDivElement;
@@ -278,6 +298,16 @@ let shareTrack: Track | null = null;
 let pendingAvatar: string = '';
 let profileAvatarData: string = '';
 
+// Playlist cover state
+let pendingPlaylistCover: string = '';
+
+// Shared playlist state
+let sharedPlaylistTracks: PlaylistSong[] = [];
+let sharedPlaylistData: any = null;
+
+// Copy to playlist state
+let copyToPlaylistTracks: PlaylistSong[] = [];
+
 // Page persistence
 function savePageState(page: string, extra?: any) {
   try {
@@ -357,6 +387,8 @@ async function restorePage() {
     await showPlaylistDetailPage(extra.playlistId);
   } else if (page === 'social') {
     showSocialPage();
+  } else if (page === 'sharedPlaylist' && extra?.playlistId) {
+    showSharedPlaylistPage(extra.playlistId, extra.name || '', extra.cover || '', extra.owner || '', extra.count || '0');
   } else {
     showLanding();
   }
@@ -390,6 +422,7 @@ function showAuthPage() {
   playlistDetailPage.classList.add('hidden');
   socialPage.classList.add('hidden');
   profilePage.classList.add('hidden');
+  sharedPlaylistPage.classList.add('hidden');
 }
 
 function hideAuthPage() {
@@ -401,6 +434,7 @@ function hideAuthPage() {
   playlistDetailPage.classList.add('hidden');
   socialPage.classList.add('hidden');
   profilePage.classList.add('hidden');
+  sharedPlaylistPage.classList.add('hidden');
 }
 
 function updateUIForAuth() {
@@ -775,12 +809,15 @@ async function loadPlaylists() {
   userPlaylists = data || [];
 }
 
-async function handleCreatePlaylist(name: string) {
+async function handleCreatePlaylist(name: string, coverUrl?: string) {
   if (!currentUser || !name.trim()) return;
+
+  const insertData: any = { user_id: currentUser.id, name: name.trim() };
+  if (coverUrl) insertData.cover_url = coverUrl;
 
   const { data, error } = await supabase
     .from('playlists')
-    .insert({ user_id: currentUser.id, name: name.trim() })
+    .insert(insertData)
     .select()
     .single();
 
@@ -869,25 +906,41 @@ async function showPlaylistsPage() {
     return;
   }
 
-  playlistsGrid.innerHTML = userPlaylists.map(p => `
+  playlistsGrid.innerHTML = userPlaylists.map(p => {
+    const coverHtml = p.cover_url
+      ? `<img src="${esc(p.cover_url)}" alt="">`
+      : `<svg width="40" height="40" viewBox="0 0 24 24" fill="currentColor"><path d="M15 6H3v2h12V6zm0 4H3v2h12v-2zM3 16h8v-2H3v2zM17 6v8.18c-.31-.11-.65-.18-1-.18-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3V8h3V6h-5z"/></svg>`;
+    return `
     <div class="playlist-card" data-id="${p.id}">
-      <div class="playlist-card-icon">
-        <svg width="40" height="40" viewBox="0 0 24 24" fill="currentColor"><path d="M15 6H3v2h12V6zm0 4H3v2h12v-2zM3 16h8v-2H3v2zM17 6v8.18c-.31-.11-.65-.18-1-.18-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3V8h3V6h-5z"/></svg>
-      </div>
+      <div class="playlist-card-cover">${coverHtml}</div>
       <div class="playlist-card-info">
         <div class="playlist-card-name">${esc(p.name)}</div>
         <div class="playlist-card-sub">Playlist</div>
       </div>
+      <button class="playlist-card-share" data-id="${p.id}" title="Share ke Social">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M18 16.08c-.76 0-1.44.3-1.96.77L8.91 12.7c.05-.23.09-.46.09-.7s-.04-.47-.09-.7l7.05-4.11c.54.5 1.25.81 2.04.81 1.66 0 3-1.34 3-3s-1.34-3-3-3-3 1.34-3 3c0 .24.04.47.09.7L8.04 9.81C7.5 9.31 6.79 9 6 9c-1.66 0-3 1.34-3 3s1.34 3 3 3c.79 0 1.5-.31 2.04-.81l7.12 4.16c-.05.21-.08.43-.08.65 0 1.61 1.31 2.92 2.92 2.92 1.61 0 2.92-1.31 2.92-2.92s-1.31-2.92-2.92-2.92z"/></svg>
+      </button>
       <button class="playlist-card-delete" data-id="${p.id}" title="Hapus playlist">
         <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg>
       </button>
-    </div>`).join('');
+    </div>`;
+  }).join('');
 
   playlistsGrid.querySelectorAll('.playlist-card').forEach(card => {
     card.addEventListener('click', (e) => {
       if ((e.target as HTMLElement).closest('.playlist-card-delete')) return;
+      if ((e.target as HTMLElement).closest('.playlist-card-share')) return;
       const id = (card as HTMLElement).dataset.id!;
       showPlaylistDetailPage(id);
+    });
+  });
+
+  playlistsGrid.querySelectorAll('.playlist-card-share').forEach(btn => {
+    btn.addEventListener('click', async (e) => {
+      e.stopPropagation();
+      const id = (btn as HTMLElement).dataset.id!;
+      const playlist = userPlaylists.find(p => p.id === id);
+      if (playlist) showSharePlaylistModal(playlist);
     });
   });
 
@@ -1037,7 +1090,10 @@ async function renderPlaylistModalList() {
 
 function showCreatePlaylistModalFromButton() {
   createPlaylistModal.classList.remove('hidden');
+  createPlaylistModalTitle.textContent = 'Buat Playlist Baru';
   newPlaylistName.value = '';
+  pendingPlaylistCover = '';
+  playlistCoverPreview.innerHTML = `<svg width="40" height="40" viewBox="0 0 24 24" fill="currentColor"><path d="M21 19V5c0-1.1-.9-2-2-2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2zM8.5 13.5l2.5 3.01L14.5 12l4.5 6H5l3.5-4.5z"/></svg>`;
   newPlaylistName.focus();
 }
 
@@ -1050,7 +1106,7 @@ async function handleCreatePlaylistFromModal() {
   if (!name) return;
 
   savePlaylistBtn.disabled = true;
-  const created = await handleCreatePlaylist(name);
+  const created = await handleCreatePlaylist(name, pendingPlaylistCover || undefined);
   savePlaylistBtn.disabled = false;
 
   if (created) {
@@ -1267,7 +1323,9 @@ function renderSocialChat() {
     const avatarHtml = m.avatar_url
       ? `<img class="social-msg-avatar-img" src="${esc(m.avatar_url)}" alt="">`
       : initial;
-    const trackHtml = m.track_title ? `
+
+    // Track share
+    const trackHtml = m.msg_type !== 'playlist' && m.track_title ? `
       <div class="social-msg-track" data-title="${esc(m.track_title)}" data-artist="${esc(m.track_artist || '')}" data-thumb="${esc(m.track_thumb || '')}" data-dur="${esc(m.track_duration || '')}" data-preview="${esc(m.track_preview || '')}" data-id="${esc(m.track_id || '')}">
         <img class="social-msg-thumb" src="${esc(m.track_thumb || '')}" alt="">
         <div class="social-msg-track-info">
@@ -1279,6 +1337,22 @@ function renderSocialChat() {
           <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
         </div>
       </div>` : '';
+
+    // Playlist share
+    const playlistHtml = m.msg_type === 'playlist' && m.playlist_id ? `
+      <div class="social-msg-playlist" data-playlist-id="${esc(m.playlist_id)}" data-playlist-name="${esc(m.playlist_name || '')}" data-playlist-cover="${esc(m.playlist_cover || '')}" data-playlist-owner="${esc(m.username || '')}" data-playlist-count="${esc(m.playlist_count || '0')}">
+        <div class="social-msg-playlist-cover">
+          ${m.playlist_cover ? `<img src="${esc(m.playlist_cover)}" alt="">` : `<svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><path d="M15 6H3v2h12V6zm0 4H3v2h12v-2zM3 16h8v-2H3v2zM17 6v8.18c-.31-.11-.65-.18-1-.18-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3V8h3V6h-5z"/></svg>`}
+        </div>
+        <div class="social-msg-playlist-info">
+          <div class="social-msg-playlist-name">${esc(m.playlist_name || 'Playlist')}</div>
+          <div class="social-msg-playlist-meta">${esc(m.playlist_count || '0')} lagu</div>
+        </div>
+        <div class="social-msg-playlist-arrow">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M10 6L8.59 7.41 13.17 12l-4.58 4.59L10 18l6-6z"/></svg>
+        </div>
+      </div>` : '';
+
     return `
       <div class="social-msg">
         <div class="social-msg-header">
@@ -1288,6 +1362,7 @@ function renderSocialChat() {
         </div>
         ${m.caption ? `<div class="social-msg-caption">${esc(m.caption)}</div>` : ''}
         ${trackHtml}
+        ${playlistHtml}
       </div>`;
   }).join('');
 
@@ -1297,6 +1372,18 @@ function renderSocialChat() {
       const title = el.getAttribute('data-title') || '';
       const artist = el.getAttribute('data-artist') || '';
       searchAndPlay(title, artist);
+    });
+  });
+
+  // Click playlist to view
+  socialChat.querySelectorAll('.social-msg-playlist').forEach(el => {
+    el.addEventListener('click', () => {
+      const playlistId = el.getAttribute('data-playlist-id') || '';
+      const playlistName = el.getAttribute('data-playlist-name') || '';
+      const playlistCover = el.getAttribute('data-playlist-cover') || '';
+      const playlistOwner = el.getAttribute('data-playlist-owner') || '';
+      const playlistCount = el.getAttribute('data-playlist-count') || '0';
+      showSharedPlaylistPage(playlistId, playlistName, playlistCover, playlistOwner, playlistCount);
     });
   });
 
@@ -1387,6 +1474,217 @@ async function handleShareSend() {
   shareSendBtn.textContent = 'Share';
 }
 
+// Share playlist to social
+let sharePlaylistData: Playlist | null = null;
+
+function showSharePlaylistModal(playlist: Playlist) {
+  if (!currentUser) return;
+  sharePlaylistData = playlist;
+  shareCaption.value = '';
+  sharePreview.innerHTML = `
+    <div style="display:flex;align-items:center;gap:12px">
+      <div style="width:56px;height:56px;border-radius:8px;overflow:hidden;background:linear-gradient(135deg,#1a1a2e,#16213e);display:flex;align-items:center;justify-content:center;flex-shrink:0">
+        ${playlist.cover_url ? `<img src="${esc(playlist.cover_url)}" alt="" style="width:100%;height:100%;object-fit:cover">` : `<svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><path d="M15 6H3v2h12V6zm0 4H3v2h12v-2zM3 16h8v-2H3v2zM17 6v8.18c-.31-.11-.65-.18-1-.18-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3V8h3V6h-5z"/></svg>`}
+      </div>
+      <div>
+        <div style="font-weight:600;font-size:14px">${esc(playlist.name)}</div>
+        <div style="font-size:12px;color:var(--text-sub)">Playlist</div>
+      </div>
+    </div>`;
+  shareModal.classList.remove('hidden');
+}
+
+async function handleSharePlaylistSend() {
+  if (!currentUser || !userProfile || !sharePlaylistData) return;
+  const caption = shareCaption.value.trim();
+
+  shareSendBtn.disabled = true;
+  shareSendBtn.textContent = 'Mengirim...';
+
+  try {
+    // Get playlist song count
+    const { data: songs } = await supabase
+      .from('playlist_songs')
+      .select('id')
+      .eq('playlist_id', sharePlaylistData.id);
+
+    const { error } = await supabase.from('social_messages').insert({
+      user_id: currentUser.id,
+      username: userProfile.username || userProfile.display_name || 'Unknown',
+      avatar_url: userProfile.avatar_url || '',
+      msg_type: 'playlist',
+      playlist_id: sharePlaylistData.id,
+      playlist_name: sharePlaylistData.name,
+      playlist_cover: sharePlaylistData.cover_url || '',
+      playlist_count: String(songs?.length || 0),
+      caption: caption || null,
+    });
+
+    if (error) throw error;
+    hideShareModal();
+    showSocialPage();
+  } catch (e) {
+    console.error('[handleSharePlaylistSend]', e);
+    alert('Gagal mengirim. Coba lagi.');
+  }
+
+  shareSendBtn.disabled = false;
+  shareSendBtn.textContent = 'Share';
+}
+
+// View shared playlist from social
+async function showSharedPlaylistPage(playlistId: string, name: string, cover: string, owner: string, count: string) {
+  if (!currentUser) { showAuthPage(); return; }
+
+  pushPage('social');
+  hideAllPages();
+  sharedPlaylistPage.classList.remove('hidden');
+  sharedPlaylistTitle.textContent = name;
+  savePageState('sharedPlaylist', { playlistId, name, cover, owner, count });
+
+  // Show header
+  sharedPlaylistHeader.innerHTML = `
+    <div class="shared-playlist-cover">
+      ${cover ? `<img src="${esc(cover)}" alt="">` : `<svg width="32" height="32" viewBox="0 0 24 24" fill="currentColor"><path d="M15 6H3v2h12V6zm0 4H3v2h12v-2zM3 16h8v-2H3v2zM17 6v8.18c-.31-.11-.65-.18-1-.18-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3V8h3V6h-5z"/></svg>`}
+    </div>
+    <div class="shared-playlist-info">
+      <div class="shared-playlist-name">${esc(name)}</div>
+      <div class="shared-playlist-meta">${count} lagu</div>
+      <div class="shared-playlist-owner">Dishare oleh ${esc(owner)}</div>
+    </div>`;
+
+  sharedPlaylistGrid.innerHTML = '<div class="loading-text">Memuat lagu...</div>';
+
+  // Load playlist songs
+  const { data } = await supabase
+    .from('playlist_songs')
+    .select('*')
+    .eq('playlist_id', playlistId)
+    .order('position', { ascending: true });
+
+  sharedPlaylistTracks = (data || []) as PlaylistSong[];
+
+  if (sharedPlaylistTracks.length === 0) {
+    sharedPlaylistGrid.innerHTML = '<div class="empty-state">Playlist ini kosong.</div>';
+    return;
+  }
+
+  // Store playlist data for copy
+  sharedPlaylistData = { id: playlistId, name, cover_url: cover, created_at: '' };
+
+  renderSharedPlaylistTracks();
+}
+
+function renderSharedPlaylistTracks() {
+  const tracks: Track[] = sharedPlaylistTracks.map(ps => ({
+    id: ps.track_id,
+    title: ps.title || 'Unknown',
+    artist: ps.artist || 'Unknown',
+    artistImg: '',
+    album: ps.album || '',
+    albumId: 0,
+    duration: ps.duration || '',
+    durSec: 0,
+    thumb: ps.thumb || '',
+    preview: '',
+    views: 0,
+    viewsText: '',
+    link: '',
+    isOfficial: false,
+  }));
+
+  sharedPlaylistGrid.className = 'r-grid';
+  sharedPlaylistGrid.innerHTML = tracks.map((t, i) => `
+    <div class="card" data-i="${i}">
+      <div class="card-img-wrap">
+        <img class="card-img" src="${t.thumb}" alt="" loading="lazy"
+          onerror="this.style.background='#1a1a2e'; this.src='data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 1 1%22><rect fill=%22%231a1a2e%22 width=%221%22 height=%221%22/></svg>'">
+        <button class="card-play" data-i="${i}">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
+        </button>
+        <button class="like-btn ${likedSongIds.has(t.id) ? 'liked' : ''}" data-track-id="${t.id}">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg>
+        </button>
+      </div>
+      <div class="card-title">${esc(t.title)}</div>
+      <div class="card-sub">${esc(t.artist)} · ${t.duration}</div>
+    </div>`).join('');
+
+  sharedPlaylistGrid.querySelectorAll('.card').forEach(card => {
+    card.addEventListener('click', (e) => {
+      if ((e.target as HTMLElement).closest('.like-btn')) return;
+      const i = parseInt((card as HTMLElement).dataset.i || '0');
+      queue = [...tracks];
+      queueIdx = i;
+      playCurrent();
+    });
+  });
+
+  sharedPlaylistGrid.querySelectorAll('.like-btn').forEach(btn => {
+    btn.addEventListener('click', async (e) => {
+      e.stopPropagation();
+      const trackId = (btn as HTMLElement).dataset.trackId!;
+      const track = tracks.find(t => t.id === trackId);
+      if (track) {
+        await toggleLike(track);
+        btn.classList.toggle('liked', likedSongIds.has(trackId));
+      }
+    });
+  });
+}
+
+// Copy all songs from shared playlist to user's own playlist
+function showCopyToPlaylistModal() {
+  if (!currentUser) { showAuthPage(); return; }
+  copyToPlaylistTracks = [...sharedPlaylistTracks];
+  addToPlaylistTrack = null; // reuse modal but with different flow
+  addPlaylistModal.classList.remove('hidden');
+  renderCopyPlaylistModalList();
+}
+
+async function renderCopyPlaylistModalList() {
+  await loadPlaylists();
+
+  if (userPlaylists.length === 0) {
+    addPlaylistList.innerHTML = '<div class="empty-state-sm">Buat playlist baru terlebih dahulu</div>';
+    return;
+  }
+
+  addPlaylistList.innerHTML = userPlaylists.map(p => `
+    <button class="playlist-modal-item" data-id="${p.id}">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M15 6H3v2h12V6zm0 4H3v2h12v-2zM3 16h8v-2H3v2zM17 6v8.18c-.31-.11-.65-.18-1-.18-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3V8h3V6h-5z"/></svg>
+      <span>${esc(p.name)}</span>
+    </button>`).join('');
+
+  addPlaylistList.querySelectorAll('.playlist-modal-item').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      const id = (btn as HTMLElement).dataset.id!;
+      // Copy all tracks from shared playlist to selected playlist
+      for (const ps of copyToPlaylistTracks) {
+        const track: Track = {
+          id: ps.track_id,
+          title: ps.title || 'Unknown',
+          artist: ps.artist || 'Unknown',
+          artistImg: '',
+          album: ps.album || '',
+          albumId: 0,
+          duration: ps.duration || '',
+          durSec: 0,
+          thumb: ps.thumb || '',
+          preview: '',
+          views: 0,
+          viewsText: '',
+          link: '',
+          isOfficial: false,
+        };
+        await handleAddSongToPlaylist(id, track);
+      }
+      hideAddToPlaylistModal();
+      alert('Lagu berhasil ditambahkan ke playlist!');
+    });
+  });
+}
+
 // Share modal
 function showShareModal(track: Track) {
   if (!currentUser) return;
@@ -1416,6 +1714,7 @@ function hideAllPages() {
   socialPage.classList.add('hidden');
   profilePage.classList.add('hidden');
   authPage.classList.add('hidden');
+  sharedPlaylistPage.classList.add('hidden');
 }
 
 function setLoading() {
@@ -2009,7 +2308,13 @@ fsShareBtn.addEventListener('click', () => {
 // Share modal
 shareClose.addEventListener('click', hideShareModal);
 shareBackdrop.addEventListener('click', hideShareModal);
-shareSendBtn.addEventListener('click', handleShareSend);
+shareSendBtn.addEventListener('click', () => {
+  if (sharePlaylistData) {
+    handleSharePlaylistSend();
+  } else {
+    handleShareSend();
+  }
+});
 
 // Profile page
 profileBack.addEventListener('click', () => {
@@ -2041,6 +2346,47 @@ sidebarProfileBtn.addEventListener('click', () => {
 
 profileSaveBtn.addEventListener('click', handleProfileSave);
 
+// Shared playlist page event listeners
+sharedPlaylistBack.addEventListener('click', () => {
+  const prev = popPage();
+  if (prev === 'social') showSocialPage();
+  else showLanding();
+});
+
+goHomeShared.addEventListener('click', () => showLanding());
+
+sharedPlaylistPlay.addEventListener('click', () => {
+  if (sharedPlaylistTracks.length === 0) return;
+  const tracks = sharedPlaylistTracks.map(ps => ({
+    id: ps.track_id, title: ps.title || 'Unknown', artist: ps.artist || 'Unknown',
+    artistImg: '', album: ps.album || '', albumId: 0, duration: ps.duration || '',
+    durSec: 0, thumb: ps.thumb || '', preview: '', views: 0, viewsText: '',
+    link: '', isOfficial: false,
+  }));
+  queue = tracks;
+  queueIdx = 0;
+  playCurrent();
+});
+
+sharedPlaylistShuffle.addEventListener('click', () => {
+  if (sharedPlaylistTracks.length === 0) return;
+  const tracks = sharedPlaylistTracks.map(ps => ({
+    id: ps.track_id, title: ps.title || 'Unknown', artist: ps.artist || 'Unknown',
+    artistImg: '', album: ps.album || '', albumId: 0, duration: ps.duration || '',
+    durSec: 0, thumb: ps.thumb || '', preview: '', views: 0, viewsText: '',
+    link: '', isOfficial: false,
+  }));
+  queue = [...tracks];
+  for (let i = queue.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [queue[i], queue[j]] = [queue[j], queue[i]];
+  }
+  queueIdx = 0;
+  playCurrent();
+});
+
+sharedPlaylistCopy.addEventListener('click', showCopyToPlaylistModal);
+
 // Profile avatar upload
 profileAvatarInput.addEventListener('change', async (e) => {
   const file = (e.target as HTMLInputElement).files?.[0];
@@ -2063,6 +2409,23 @@ regAvatarInput.addEventListener('change', async (e) => {
 
 // Create playlist button in playlists page
 createPlaylistBtn.addEventListener('click', showCreatePlaylistModalFromButton);
+
+// Playlist cover upload
+playlistCoverInput.addEventListener('change', async (e) => {
+  const file = (e.target as HTMLInputElement).files?.[0];
+  if (!file) return;
+  if (file.size > 2 * 1024 * 1024) { alert('Ukuran gambar maks 2MB'); return; }
+  const dataUrl = await resizeImage(file, 256);
+  pendingPlaylistCover = dataUrl;
+  playlistCoverPreview.innerHTML = `<img src="${dataUrl}" alt="">`;
+});
+
+// Playlist detail share button
+playlistDetailShare.addEventListener('click', () => {
+  if (!currentPlaylistId) return;
+  const playlist = userPlaylists.find(p => p.id === currentPlaylistId);
+  if (playlist) showSharePlaylistModal(playlist);
+});
 
 // Playlist detail play all / shuffle
 playlistDetailPlay.addEventListener('click', async () => {

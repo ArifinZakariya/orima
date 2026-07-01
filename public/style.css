@@ -1542,3 +1542,102 @@ body {
   .user-btn span { display: none; }
   .r-page-title span { font-size: 16px; }
 }
+
+/* ===== MOBILE SIDEBAR ===== */
+.sidebar-overlay {
+  position: fixed; inset: 0; z-index: 500;
+  background: rgba(0,0,0,0.6);
+  backdrop-filter: blur(4px);
+  opacity: 0; transition: opacity 0.3s;
+  pointer-events: none;
+}
+
+.sidebar-overlay.active {
+  opacity: 1; pointer-events: auto;
+}
+
+.sidebar {
+  position: fixed; top: 0; right: 0; bottom: 0;
+  width: 280px; max-width: 80vw; z-index: 600;
+  background: rgba(12, 12, 28, 0.98);
+  border-left: 1px solid rgba(255,255,255,0.08);
+  backdrop-filter: blur(30px);
+  transform: translateX(100%);
+  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  display: flex; flex-direction: column;
+  overflow-y: auto;
+}
+
+.sidebar.active {
+  transform: translateX(0);
+}
+
+.sidebar-header {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 20px 20px 16px;
+  border-bottom: 1px solid rgba(255,255,255,0.06);
+}
+
+.sidebar-user {
+  display: flex; align-items: center; gap: 12px;
+  min-width: 0;
+}
+
+.sidebar-avatar {
+  width: 44px; height: 44px; border-radius: 50%;
+  background: linear-gradient(135deg, #7c3aed, #06b6d4);
+  display: flex; align-items: center; justify-content: center;
+  color: #fff; flex-shrink: 0;
+}
+
+.sidebar-name {
+  font-size: 15px; font-weight: 700;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+
+.sidebar-close {
+  background: none; border: none; color: #888;
+  cursor: pointer; padding: 6px; border-radius: 50%;
+  display: flex; flex-shrink: 0;
+  transition: color 0.2s;
+}
+
+.sidebar-close:hover { color: #fff; }
+
+.sidebar-items {
+  display: flex; flex-direction: column; gap: 4px;
+  padding: 12px 10px;
+}
+
+.sidebar-item {
+  display: flex; align-items: center; gap: 14px;
+  width: 100%; padding: 14px 16px;
+  background: none; border: none;
+  color: var(--text); font-size: 15px; font-weight: 500;
+  font-family: inherit; cursor: pointer;
+  border-radius: 10px;
+  transition: background 0.2s;
+  text-align: left;
+}
+
+.sidebar-item:hover {
+  background: rgba(255,255,255,0.08);
+}
+
+.sidebar-item.logout {
+  color: #f43f5e;
+}
+
+.sidebar-item.logout:hover {
+  background: rgba(244, 63, 94, 0.08);
+}
+
+.sidebar-divider {
+  height: 1px; background: rgba(255,255,255,0.06);
+  margin: 8px 12px;
+}
+
+/* Hide desktop dropdown on mobile, show sidebar */
+@media (max-width: 768px) {
+  .user-dropdown { display: none !important; }
+}

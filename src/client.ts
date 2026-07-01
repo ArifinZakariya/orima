@@ -184,6 +184,15 @@ const pPlaylistBtn = document.getElementById('pPlaylistBtn') as HTMLButtonElemen
 const fsLikeBtn = document.getElementById('fsLikeBtn') as HTMLButtonElement;
 const fsPlaylistBtn = document.getElementById('fsPlaylistBtn') as HTMLButtonElement;
 
+// Sidebar elements
+const sidebarOverlay = document.getElementById('sidebarOverlay') as HTMLDivElement;
+const sidebar = document.getElementById('sidebar') as HTMLDivElement;
+const sidebarClose = document.getElementById('sidebarClose') as HTMLButtonElement;
+const sidebarName = document.getElementById('sidebarName') as HTMLDivElement;
+const sidebarLikedBtn = document.getElementById('sidebarLikedBtn') as HTMLButtonElement;
+const sidebarPlaylistsBtn = document.getElementById('sidebarPlaylistsBtn') as HTMLButtonElement;
+const sidebarLogoutBtn = document.getElementById('sidebarLogoutBtn') as HTMLButtonElement;
+
 // Safe null check helper
 function safe(id: string): HTMLElement | null { return document.getElementById(id); }
 function on(el: HTMLElement | null, evt: string, fn: any) { if (el) el.addEventListener(evt, fn); else console.warn('Missing element:', el); }
@@ -303,10 +312,32 @@ function updateUIForAuth() {
   if (currentUser && userProfile) {
     userBtn.classList.remove('hidden');
     userNameDisplay.textContent = userProfile.display_name || userProfile.username;
+    sidebarName.textContent = userProfile.display_name || userProfile.username;
   } else {
     userBtn.classList.add('hidden');
     userDropdown.classList.add('hidden');
+    closeSidebar();
   }
+}
+
+function openSidebar() {
+  if (!currentUser) return;
+  sidebarName.textContent = userProfile?.display_name || userProfile?.username || '';
+  sidebar.classList.remove('hidden');
+  sidebarOverlay.classList.remove('hidden');
+  requestAnimationFrame(() => {
+    sidebar.classList.add('active');
+    sidebarOverlay.classList.add('active');
+  });
+}
+
+function closeSidebar() {
+  sidebar.classList.remove('active');
+  sidebarOverlay.classList.remove('active');
+  setTimeout(() => {
+    sidebar.classList.add('hidden');
+    sidebarOverlay.classList.add('hidden');
+  }, 300);
 }
 
 function showAuthView(view: 'login' | 'register' | 'forgot') {
@@ -1459,13 +1490,37 @@ logoutBtn.addEventListener('click', handleLogout);
 // User menu
 userBtn.addEventListener('click', (e) => {
   e.stopPropagation();
-  userDropdown.classList.toggle('hidden');
+  if (window.innerWidth <= 768) {
+    openSidebar();
+  } else {
+    userDropdown.classList.toggle('hidden');
+  }
 });
 
 document.addEventListener('click', () => {
   userDropdown.classList.add('hidden');
+  closeSidebar();
 });
 
+sidebarClose.addEventListener('click', closeSidebar);
+sidebarOverlay.addEventListener('click', closeSidebar);
+
+sidebarLikedBtn.addEventListener('click', () => {
+  closeSidebar();
+  showLikedSongsPage();
+});
+
+sidebarPlaylistsBtn.addEventListener('click', () => {
+  closeSidebar();
+  showPlaylistsPage();
+});
+
+sidebarLogoutBtn.addEventListener('click', () => {
+  closeSidebar();
+  handleLogout();
+});
+
+// Desktop dropdown listeners
 likedSongsMenuBtn.addEventListener('click', () => {
   userDropdown.classList.add('hidden');
   showLikedSongsPage();
@@ -1475,6 +1530,8 @@ playlistsMenuBtn.addEventListener('click', () => {
   userDropdown.classList.add('hidden');
   showPlaylistsPage();
 });
+
+logoutBtn.addEventListener('click', handleLogout);
 
 // Player like/playlist buttons
 pLikeBtn.addEventListener('click', async () => {

@@ -293,6 +293,7 @@ let addToPlaylistTrack: Track | null = null;
 let socialMsgs: any[] = [];
 let socialPollInterval: number | null = null;
 let shareTrack: Track | null = null;
+let socialFromPage: string = 'landing';
 
 // Profile/avatar state
 let pendingAvatar: string = '';
@@ -386,7 +387,7 @@ async function restorePage() {
     await showPlaylistsPage();
     await showPlaylistDetailPage(extra.playlistId);
   } else if (page === 'social') {
-    showSocialPage();
+    showSocialPage(true);
   } else if (page === 'sharedPlaylist' && extra?.playlistId) {
     showSharedPlaylistPage(extra.playlistId, extra.name || '', extra.cover || '', extra.owner || '', extra.count || '0');
   } else {
@@ -1170,8 +1171,16 @@ function showSocialPage(skipPush?: boolean) {
   if (!currentUser) { showAuthPage(); return; }
 
   if (!skipPush) {
-    if (resultsPage.classList.contains('hidden') && socialPage.classList.contains('hidden')) pushPage('landing');
-    else if (!resultsPage.classList.contains('hidden')) pushPage('results');
+    // Detect source from DOM before hiding pages
+    let from = 'landing';
+    if (!resultsPage.classList.contains('hidden')) from = 'results';
+    else if (!likedPage.classList.contains('hidden')) from = 'liked';
+    else if (!playlistsPage.classList.contains('hidden')) from = 'playlists';
+    else if (!playlistDetailPage.classList.contains('hidden')) from = 'playlists';
+    else if (!profilePage.classList.contains('hidden')) from = 'profile';
+    else if (!sharedPlaylistPage.classList.contains('hidden')) from = 'social';
+    else from = socialFromPage;
+    pushPage(from);
   }
 
   hideAllPages();
@@ -2262,6 +2271,13 @@ sidebarPlaylistsBtn.addEventListener('click', () => {
 
 sidebarSocialBtn.addEventListener('click', () => {
   closeSidebar();
+  // Detect current page for back navigation
+  if (!resultsPage.classList.contains('hidden')) socialFromPage = 'results';
+  else if (!likedPage.classList.contains('hidden')) socialFromPage = 'liked';
+  else if (!playlistsPage.classList.contains('hidden')) socialFromPage = 'playlists';
+  else if (!playlistDetailPage.classList.contains('hidden')) socialFromPage = 'playlists';
+  else if (!profilePage.classList.contains('hidden')) socialFromPage = 'profile';
+  else socialFromPage = 'landing';
   showSocialPage();
 });
 
@@ -2283,6 +2299,12 @@ playlistsMenuBtn.addEventListener('click', () => {
 
 socialMenuBtn.addEventListener('click', () => {
   userDropdown.classList.add('hidden');
+  if (!resultsPage.classList.contains('hidden')) socialFromPage = 'results';
+  else if (!likedPage.classList.contains('hidden')) socialFromPage = 'liked';
+  else if (!playlistsPage.classList.contains('hidden')) socialFromPage = 'playlists';
+  else if (!playlistDetailPage.classList.contains('hidden')) socialFromPage = 'playlists';
+  else if (!profilePage.classList.contains('hidden')) socialFromPage = 'profile';
+  else socialFromPage = 'landing';
   showSocialPage();
 });
 
@@ -2321,6 +2343,9 @@ socialBack.addEventListener('click', () => {
   hideSocialPage();
   const prev = popPage();
   if (prev === 'results') showResults();
+  else if (prev === 'liked') showLikedSongsPage();
+  else if (prev === 'playlists') showPlaylistsPage();
+  else if (prev === 'profile') showProfilePage();
   else showLanding();
 });
 
@@ -2359,7 +2384,7 @@ profileBack.addEventListener('click', () => {
   else if (prev === 'liked') showLikedSongsPage();
   else if (prev === 'playlists') showPlaylistsPage();
   else if (prev === 'playlistDetail') showPlaylistsPage();
-  else if (prev === 'social') showSocialPage();
+  else if (prev === 'social') showSocialPage(true);
   else showLanding();
 });
 
@@ -2385,7 +2410,7 @@ profileSaveBtn.addEventListener('click', handleProfileSave);
 // Shared playlist page event listeners
 sharedPlaylistBack.addEventListener('click', () => {
   const prev = popPage();
-  if (prev === 'social') showSocialPage();
+  if (prev === 'social') showSocialPage(true);
   else showLanding();
 });
 

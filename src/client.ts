@@ -179,9 +179,7 @@ const createPlaylistClose = document.getElementById('createPlaylistClose') as HT
 const newPlaylistName = document.getElementById('newPlaylistName') as HTMLInputElement;
 const savePlaylistBtn = document.getElementById('savePlaylistBtn') as HTMLButtonElement;
 
-// Player like/playlist buttons
-const pLikeBtn = document.getElementById('pLikeBtn') as HTMLButtonElement;
-const pPlaylistBtn = document.getElementById('pPlaylistBtn') as HTMLButtonElement;
+// Player like/playlist buttons (fullscreen only)
 const fsLikeBtn = document.getElementById('fsLikeBtn') as HTMLButtonElement;
 const fsPlaylistBtn = document.getElementById('fsPlaylistBtn') as HTMLButtonElement;
 
@@ -212,8 +210,7 @@ const sharePreview = document.getElementById('sharePreview') as HTMLDivElement;
 const shareCaption = document.getElementById('shareCaption') as HTMLTextAreaElement;
 const shareSendBtn = document.getElementById('shareSendBtn') as HTMLButtonElement;
 
-// Player share buttons
-const pShareBtn = document.getElementById('pShareBtn') as HTMLButtonElement;
+// Player share buttons (fullscreen only)
 const fsShareBtn = document.getElementById('fsShareBtn') as HTMLButtonElement;
 
 // Profile elements
@@ -2004,17 +2001,7 @@ socialMenuBtn.addEventListener('click', () => {
 
 logoutBtn.addEventListener('click', handleLogout);
 
-// Player like/playlist buttons
-pLikeBtn.addEventListener('click', async () => {
-  if (queueIdx < 0 || queueIdx >= queue.length) return;
-  await toggleLike(queue[queueIdx]);
-});
-
-pPlaylistBtn.addEventListener('click', () => {
-  if (queueIdx < 0 || queueIdx >= queue.length) return;
-  showAddToPlaylistModal(queue[queueIdx]);
-});
-
+// Player like/playlist buttons (fullscreen only)
 fsLikeBtn.addEventListener('click', async () => {
   if (queueIdx < 0 || queueIdx >= queue.length) return;
   await toggleLike(queue[queueIdx]);
@@ -2061,12 +2048,7 @@ on(hamburgerBtnSocial, 'click', (e: Event) => {
   openSidebar();
 });
 
-// Player share buttons
-pShareBtn.addEventListener('click', () => {
-  if (queueIdx < 0 || queueIdx >= queue.length) return;
-  showShareModal(queue[queueIdx]);
-});
-
+// Player share button (fullscreen only)
 fsShareBtn.addEventListener('click', () => {
   if (queueIdx < 0 || queueIdx >= queue.length) return;
   showShareModal(queue[queueIdx]);

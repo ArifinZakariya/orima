@@ -9,9 +9,11 @@
     "start": "npm run build:client && tsx src/server.ts"
   },
   "dependencies": {
+    "@supabase/supabase-js": "^2.110.0",
     "axios": "^1.7.9",
     "cors": "^2.8.5",
     "express": "^4.21.2",
+    "pg": "^8.22.0",
     "youtube-dl-exec": "^3.0.12",
     "youtubei.js": "^17.0.1"
   },

@@ -1,3 +1,10 @@
+import { createClient } from '@supabase/supabase-js';
+
+const SUPABASE_URL = 'https://rymjroodmcfmaobsagqn.supabase.co';
+const SUPABASE_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJ5bWpyb29kbWNmbWFvYnNhZ3FuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODI4MTI4MTQsImV4cCI6MjA5ODM4ODgxNH0.6pI6WrHee5rNfyhGF2P6oIQ8j1IMtsxV1boXZc715u0';
+const supabase = createClient(SUPABASE_URL, SUPABASE_ANON);
+
+// ===== TYPES =====
 interface Track {
   id: string;
   title: string;
@@ -15,6 +22,33 @@ interface Track {
   isOfficial: boolean;
 }
 
+interface LrcLine { time: number; text: string; }
+
+interface UserProfile {
+  id: string;
+  username: string;
+  display_name: string;
+}
+
+interface Playlist {
+  id: string;
+  name: string;
+  created_at: string;
+}
+
+interface PlaylistSong {
+  id: string;
+  playlist_id: string;
+  track_id: string;
+  title: string;
+  artist: string;
+  album: string;
+  thumb: string;
+  duration: string;
+  position: number;
+}
+
+// ===== DOM ELEMENTS =====
 const audio = document.getElementById('audioEl') as HTMLAudioElement;
 const landing = document.getElementById('landing') as HTMLDivElement;
 const resultsPage = document.getElementById('resultsPage') as HTMLDivElement;
@@ -86,8 +120,75 @@ const playAllBtn = document.getElementById('playAllBtn') as HTMLButtonElement;
 const shuffleAllBtn = document.getElementById('shuffleAllBtn') as HTMLButtonElement;
 const viewToggle = document.getElementById('viewToggle') as HTMLDivElement;
 
-interface LrcLine { time: number; text: string; }
+// Auth elements
+const authPage = document.getElementById('authPage') as HTMLDivElement;
+const loginForm = document.getElementById('loginForm') as HTMLDivElement;
+const registerForm = document.getElementById('registerForm') as HTMLDivElement;
+const forgotForm = document.getElementById('forgotForm') as HTMLDivElement;
+const loginUsername = document.getElementById('loginUsername') as HTMLInputElement;
+const loginPassword = document.getElementById('loginPassword') as HTMLInputElement;
+const loginBtn = document.getElementById('loginBtn') as HTMLButtonElement;
+const loginError = document.getElementById('loginError') as HTMLDivElement;
+const regName = document.getElementById('regName') as HTMLInputElement;
+const regUsername = document.getElementById('regUsername') as HTMLInputElement;
+const regPassword = document.getElementById('regPassword') as HTMLInputElement;
+const registerBtn = document.getElementById('registerBtn') as HTMLButtonElement;
+const registerError = document.getElementById('registerError') as HTMLDivElement;
+const registerSuccess = document.getElementById('registerSuccess') as HTMLDivElement;
+const forgotUsername = document.getElementById('forgotUsername') as HTMLInputElement;
+const forgotBtn = document.getElementById('forgotBtn') as HTMLButtonElement;
+const forgotError = document.getElementById('forgotError') as HTMLDivElement;
+const forgotSuccess = document.getElementById('forgotSuccess') as HTMLDivElement;
+const showRegisterBtn = document.getElementById('showRegister') as HTMLAnchorElement;
+const showLoginBtn = document.getElementById('showLogin') as HTMLAnchorElement;
+const forgotPassLink = document.getElementById('forgotPassLink') as HTMLAnchorElement;
+const backToLoginLink = document.getElementById('backToLogin') as HTMLAnchorElement;
 
+// User menu elements
+const userBtn = document.getElementById('userBtn') as HTMLButtonElement;
+const userDropdown = document.getElementById('userDropdown') as HTMLDivElement;
+const userNameDisplay = document.getElementById('userName') as HTMLSpanElement;
+const likedSongsMenuBtn = document.getElementById('likedSongsMenuBtn') as HTMLButtonElement;
+const playlistsMenuBtn = document.getElementById('playlistsMenuBtn') as HTMLButtonElement;
+const logoutBtn = document.getElementById('logoutBtn') as HTMLButtonElement;
+
+// New page elements
+const likedPage = document.getElementById('likedPage') as HTMLDivElement;
+const likedGrid = document.getElementById('likedGrid') as HTMLDivElement;
+const likedBack = document.getElementById('likedBack') as HTMLButtonElement;
+const playlistsPage = document.getElementById('playlistsPage') as HTMLDivElement;
+const playlistsGrid = document.getElementById('playlistsGrid') as HTMLDivElement;
+const playlistsBack = document.getElementById('playlistsBack') as HTMLButtonElement;
+const createPlaylistBtn = document.getElementById('createPlaylistBtn') as HTMLButtonElement;
+const playlistDetailPage = document.getElementById('playlistDetailPage') as HTMLDivElement;
+const playlistDetailGrid = document.getElementById('playlistDetailGrid') as HTMLDivElement;
+const playlistDetailBack = document.getElementById('playlistDetailBack') as HTMLButtonElement;
+const playlistDetailTitle = document.getElementById('playlistDetailTitle') as HTMLDivElement;
+const playlistDetailPlay = document.getElementById('playlistDetailPlay') as HTMLButtonElement;
+const playlistDetailShuffle = document.getElementById('playlistDetailShuffle') as HTMLButtonElement;
+
+// Modal elements
+const addPlaylistModal = document.getElementById('addPlaylistModal') as HTMLDivElement;
+const addPlaylistBackdrop = document.getElementById('addPlaylistBackdrop') as HTMLDivElement;
+const addPlaylistList = document.getElementById('addPlaylistList') as HTMLDivElement;
+const addPlaylistClose = document.getElementById('addPlaylistClose') as HTMLButtonElement;
+const createPlaylistModal = document.getElementById('createPlaylistModal') as HTMLDivElement;
+const createPlaylistBackdrop = document.getElementById('createPlaylistBackdrop') as HTMLDivElement;
+const createPlaylistClose = document.getElementById('createPlaylistClose') as HTMLButtonElement;
+const newPlaylistName = document.getElementById('newPlaylistName') as HTMLInputElement;
+const savePlaylistBtn = document.getElementById('savePlaylistBtn') as HTMLButtonElement;
+
+// Player like/playlist buttons
+const pLikeBtn = document.getElementById('pLikeBtn') as HTMLButtonElement;
+const pPlaylistBtn = document.getElementById('pPlaylistBtn') as HTMLButtonElement;
+const fsLikeBtn = document.getElementById('fsLikeBtn') as HTMLButtonElement;
+const fsPlaylistBtn = document.getElementById('fsPlaylistBtn') as HTMLButtonElement;
+
+// Safe null check helper
+function safe(id: string): HTMLElement | null { return document.getElementById(id); }
+function on(el: HTMLElement | null, evt: string, fn: any) { if (el) el.addEventListener(evt, fn); else console.warn('Missing element:', el); }
+
+// ===== STATE =====
 let queue: Track[] = [];
 let queueIdx = -1;
 let volume = 0.7;
@@ -105,6 +206,23 @@ let viewMode: 'grid' | 'list' = 'grid';
 let isSeeking = false;
 audio.volume = volume;
 
+// Auth state
+let currentUser: any = null;
+let userProfile: UserProfile | null = null;
+
+// Liked songs state
+let likedSongIds = new Set<string>();
+let likedTracks: Track[] = [];
+
+// Playlists state
+let userPlaylists: Playlist[] = [];
+let currentPlaylistId: string | null = null;
+let currentPlaylistTracks: PlaylistSong[] = [];
+
+// Add to playlist state
+let addToPlaylistTrack: Track | null = null;
+
+// ===== UTILITY =====
 function fmt(s: number): string {
   if (!s || isNaN(s)) return '0:00';
   const m = Math.floor(s / 60);
@@ -118,17 +236,747 @@ function esc(t: string): string {
   return d.innerHTML;
 }
 
+// ===== AUTH =====
+async function initAuth() {
+  const { data: { session } } = await supabase.auth.getSession();
+  if (session?.user) {
+    currentUser = session.user;
+    await loadProfile();
+    hideAuthPage();
+    updateUIForAuth();
+  } else {
+    showAuthPage();
+  }
+
+  supabase.auth.onAuthStateChange(async (_event, session) => {
+    if (session?.user) {
+      currentUser = session.user;
+      await loadProfile();
+      hideAuthPage();
+      updateUIForAuth();
+    } else {
+      currentUser = null;
+      userProfile = null;
+      showAuthPage();
+      updateUIForAuth();
+    }
+  });
+}
+
+async function loadProfile() {
+  if (!currentUser) return;
+  try {
+    const { data } = await supabase.from('profiles').select('*').eq('id', currentUser.id).single();
+    if (data) {
+      userProfile = data;
+      userNameDisplay.textContent = userProfile.display_name || userProfile.username;
+    } else {
+      userProfile = { id: currentUser.id, username: currentUser.user_metadata?.username || '', display_name: currentUser.user_metadata?.display_name || '' };
+      userNameDisplay.textContent = userProfile.display_name || userProfile.username;
+    }
+  } catch (e) {
+    console.error('[loadProfile]', e);
+    userProfile = { id: currentUser.id, username: '', display_name: '' };
+  }
+}
+
+function showAuthPage() {
+  authPage.classList.remove('hidden');
+  landing.classList.add('hidden');
+  resultsPage.classList.add('hidden');
+  player.classList.add('hidden');
+  likedPage.classList.add('hidden');
+  playlistsPage.classList.add('hidden');
+  playlistDetailPage.classList.add('hidden');
+}
+
+function hideAuthPage() {
+  authPage.classList.add('hidden');
+  landing.classList.remove('hidden');
+  resultsPage.classList.add('hidden');
+  likedPage.classList.add('hidden');
+  playlistsPage.classList.add('hidden');
+  playlistDetailPage.classList.add('hidden');
+}
+
+function updateUIForAuth() {
+  if (currentUser && userProfile) {
+    userBtn.classList.remove('hidden');
+    userNameDisplay.textContent = userProfile.display_name || userProfile.username;
+  } else {
+    userBtn.classList.add('hidden');
+    userDropdown.classList.add('hidden');
+  }
+}
+
+function showAuthView(view: 'login' | 'register' | 'forgot') {
+  loginForm.classList.add('hidden');
+  registerForm.classList.add('hidden');
+  forgotForm.classList.add('hidden');
+  loginError.textContent = '';
+  registerError.textContent = '';
+  registerSuccess.textContent = '';
+  forgotError.textContent = '';
+  forgotSuccess.textContent = '';
+
+  if (view === 'login') loginForm.classList.remove('hidden');
+  else if (view === 'register') registerForm.classList.remove('hidden');
+  else forgotForm.classList.remove('hidden');
+}
+
+async function handleLogin() {
+  const username = loginUsername.value.trim();
+  const password = loginPassword.value;
+
+  if (!username || !password) {
+    loginError.textContent = 'Username dan password harus diisi';
+    return;
+  }
+
+  loginBtn.disabled = true;
+  loginBtn.textContent = 'Masuk...';
+  loginError.textContent = '';
+
+  const email = `${username}@orima.app`;
+  const { error } = await supabase.auth.signInWithPassword({ email, password });
+
+  loginBtn.disabled = false;
+  loginBtn.textContent = 'Login';
+
+  if (error) {
+    const msg = error.message || 'Username atau password salah';
+    if (msg.includes('Invalid') || msg.includes('invalid') || msg.includes('credentials')) {
+      loginError.textContent = 'Username atau password salah';
+    } else {
+      loginError.textContent = msg;
+    }
+  } else {
+    loginUsername.value = '';
+    loginPassword.value = '';
+    currentUser = (await supabase.auth.getUser()).data.user;
+    await loadProfile();
+    hideAuthPage();
+    updateUIForAuth();
+    await loadLikedSongs();
+  }
+}
+
+async function handleRegister() {
+  const name = regName.value.trim();
+  const username = regUsername.value.trim().toLowerCase();
+  const password = regPassword.value;
+
+  if (!name || !username || !password) {
+    registerError.textContent = 'Semua kolom harus diisi';
+    return;
+  }
+
+  if (username.length < 3) {
+    registerError.textContent = 'Username minimal 3 karakter';
+    return;
+  }
+
+  if (password.length < 6) {
+    registerError.textContent = 'Password minimal 6 karakter';
+    return;
+  }
+
+  if (!/^[a-z0-9_]+$/.test(username)) {
+    registerError.textContent = 'Username hanya boleh huruf kecil, angka, dan underscore';
+    return;
+  }
+
+  registerBtn.disabled = true;
+  registerBtn.textContent = 'Mendaftar...';
+  registerError.textContent = '';
+
+  const email = `${username}@orima.app`;
+  const { error } = await supabase.auth.signUp({
+    email,
+    password,
+    options: {
+      data: { username, display_name: name }
+    }
+  });
+
+  registerBtn.disabled = false;
+  registerBtn.textContent = 'Register';
+
+  if (error) {
+    const msg = error.message || error.error_description || 'Terjadi error, coba lagi';
+    if (msg.includes('already') || msg.includes('exists') || msg.includes('duplicate')) {
+      registerError.textContent = 'Username sudah digunakan';
+    } else {
+      registerError.textContent = msg;
+    }
+  } else if (data?.user?.identities?.length === 0) {
+    registerError.textContent = 'Username sudah digunakan';
+  } else {
+    registerSuccess.textContent = 'Registrasi berhasil! Sedang login...';
+    regName.value = '';
+    regUsername.value = '';
+    regPassword.value = '';
+    // Auto login after register
+    const { error: loginErr } = await supabase.auth.signInWithPassword({ email, password });
+    if (!loginErr) {
+      currentUser = (await supabase.auth.getUser()).data.user;
+      await loadProfile();
+      hideAuthPage();
+      updateUIForAuth();
+      await loadLikedSongs();
+    } else {
+      setTimeout(() => showAuthView('login'), 1500);
+    }
+  }
+}
+
+async function handleForgotPassword() {
+  const username = forgotUsername.value.trim().toLowerCase();
+
+  if (!username) {
+    forgotError.textContent = 'Username harus diisi';
+    return;
+  }
+
+  forgotBtn.disabled = true;
+  forgotBtn.textContent = 'Mengirim...';
+  forgotError.textContent = '';
+  forgotSuccess.textContent = '';
+
+  const email = `${username}@orima.app`;
+  const { error } = await supabase.auth.resetPasswordForEmail(email, {
+    redirectTo: window.location.origin
+  });
+
+  forgotBtn.disabled = false;
+  forgotBtn.textContent = 'Reset Password';
+
+  if (error) {
+    forgotError.textContent = 'Gagal mengirim reset password. Pastikan username benar.';
+  } else {
+    forgotSuccess.textContent = 'Link reset password telah dikirim ke email terdaftar.';
+    forgotUsername.value = '';
+  }
+}
+
+async function handleLogout() {
+  await supabase.auth.signOut();
+  currentUser = null;
+  userProfile = null;
+  likedSongIds.clear();
+  likedTracks = [];
+  userPlaylists = [];
+  audio.pause();
+  audio.src = '';
+  player.classList.add('hidden');
+  showLanding();
+}
+
+// ===== LIKED SONGS =====
+async function loadLikedSongs() {
+  if (!currentUser) return;
+  const { data } = await supabase
+    .from('liked_songs')
+    .select('track_id')
+    .eq('user_id', currentUser.id);
+
+  likedSongIds.clear();
+  if (data) data.forEach((r: any) => likedSongIds.add(r.track_id));
+  updateAllLikeButtons();
+}
+
+async function loadLikedTracks() {
+  if (!currentUser) return;
+  const { data } = await supabase
+    .from('liked_songs')
+    .select('*')
+    .eq('user_id', currentUser.id)
+    .order('created_at', { ascending: false });
+
+  if (data) {
+    likedTracks = data.map((r: any) => ({
+      id: r.track_id,
+      title: r.title || 'Unknown',
+      artist: r.artist || 'Unknown',
+      artistImg: '',
+      album: r.album || '',
+      albumId: 0,
+      duration: r.duration || '',
+      durSec: 0,
+      thumb: r.thumb || '',
+      preview: '',
+      views: 0,
+      viewsText: '',
+      link: '',
+      isOfficial: false,
+    }));
+  }
+}
+
+async function toggleLike(track: Track) {
+  if (!currentUser) {
+    showAuthPage();
+    return;
+  }
+
+  if (likedSongIds.has(track.id)) {
+    likedSongIds.delete(track.id);
+    await supabase
+      .from('liked_songs')
+      .delete()
+      .eq('user_id', currentUser.id)
+      .eq('track_id', track.id);
+  } else {
+    likedSongIds.add(track.id);
+    await supabase.from('liked_songs').insert({
+      user_id: currentUser.id,
+      track_id: track.id,
+      title: track.title,
+      artist: track.artist,
+      album: track.album,
+      thumb: track.thumb,
+      duration: track.duration,
+    });
+  }
+  updateAllLikeButtons();
+}
+
+function updateAllLikeButtons() {
+  document.querySelectorAll('.like-btn').forEach(btn => {
+    const trackId = (btn as HTMLElement).dataset.trackId;
+    if (trackId) {
+      btn.classList.toggle('liked', likedSongIds.has(trackId));
+    }
+  });
+  updatePlayerLikeBtn();
+}
+
+function updatePlayerLikeBtn() {
+  if (queueIdx < 0 || queueIdx >= queue.length) return;
+  const track = queue[queueIdx];
+  const isLiked = likedSongIds.has(track.id);
+  pLikeBtn.classList.toggle('liked', isLiked);
+  fsLikeBtn.classList.toggle('liked', isLiked);
+}
+
+async function showLikedSongsPage() {
+  if (!currentUser) { showAuthPage(); return; }
+
+  // Determine current page for back navigation
+  if (resultsPage.classList.contains('hidden')) pushPage('landing');
+  else pushPage('results');
+
+  hideAllPages();
+  likedPage.classList.remove('hidden');
+  rTitle.textContent = 'Liked Songs';
+  likedGrid.innerHTML = '<div class="loading-text">Memuat liked songs...</div>';
+
+  await loadLikedTracks();
+
+  if (likedTracks.length === 0) {
+    likedGrid.innerHTML = '<div class="empty-state">Belum ada lagu yang disukai.<br>Klik hati pada lagu untuk menambahkannya.</div>';
+    return;
+  }
+
+  renderLikedTracks();
+}
+
+function renderLikedTracks() {
+  likedGrid.className = 'r-grid';
+  likedGrid.innerHTML = likedTracks.map((t, i) => `
+    <div class="card" data-i="${i}">
+      <div class="card-img-wrap">
+        <img class="card-img" src="${t.thumb}" alt="" loading="lazy"
+          onerror="this.style.background='#1a1a2e'; this.src='data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 1 1%22><rect fill=%22%231a1a2e%22 width=%221%22 height=%221%22/></svg>'">
+        <button class="card-play" data-i="${i}">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
+        </button>
+        <button class="like-btn liked" data-track-id="${t.id}">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg>
+        </button>
+      </div>
+      <div class="card-title">${esc(t.title)}</div>
+      <div class="card-sub">${esc(t.artist)} · ${t.duration}</div>
+    </div>`).join('');
+
+  likedGrid.querySelectorAll('.card').forEach(card => {
+    card.addEventListener('click', (e) => {
+      if ((e.target as HTMLElement).closest('.like-btn')) return;
+      const i = parseInt((card as HTMLElement).dataset.i || '0');
+      queue = [...likedTracks];
+      queueIdx = i;
+      playCurrent();
+    });
+  });
+
+  likedGrid.querySelectorAll('.like-btn').forEach(btn => {
+    btn.addEventListener('click', async (e) => {
+      e.stopPropagation();
+      const trackId = (btn as HTMLElement).dataset.trackId!;
+      const track = likedTracks.find(t => t.id === trackId);
+      if (track) {
+        await toggleLike(track);
+        if (likedSongIds.has(trackId)) {
+          btn.classList.add('liked');
+        } else {
+          btn.classList.remove('liked');
+          likedTracks = likedTracks.filter(t => t.id !== trackId);
+          renderLikedTracks();
+        }
+      }
+    });
+  });
+}
+
+// ===== PLAYLISTS =====
+async function loadPlaylists() {
+  if (!currentUser) return;
+  const { data } = await supabase
+    .from('playlists')
+    .select('*')
+    .eq('user_id', currentUser.id)
+    .order('created_at', { ascending: false });
+
+  userPlaylists = data || [];
+}
+
+async function handleCreatePlaylist(name: string) {
+  if (!currentUser || !name.trim()) return;
+
+  const { data, error } = await supabase
+    .from('playlists')
+    .insert({ user_id: currentUser.id, name: name.trim() })
+    .select()
+    .single();
+
+  if (!error && data) {
+    userPlaylists.unshift(data);
+    return data;
+  }
+  return null;
+}
+
+async function handleDeletePlaylist(id: string) {
+  if (!currentUser) return;
+  await supabase.from('playlists').delete().eq('id', id).eq('user_id', currentUser.id);
+  userPlaylists = userPlaylists.filter(p => p.id !== id);
+}
+
+async function handleAddSongToPlaylist(playlistId: string, track: Track) {
+  if (!currentUser) return;
+
+  const { data: existing } = await supabase
+    .from('playlist_songs')
+    .select('id')
+    .eq('playlist_id', playlistId)
+    .eq('track_id', track.id)
+    .limit(1);
+
+  if (existing && existing.length > 0) return;
+
+  const { data: maxPos } = await supabase
+    .from('playlist_songs')
+    .select('position')
+    .eq('playlist_id', playlistId)
+    .order('position', { ascending: false })
+    .limit(1);
+
+  const nextPos = maxPos && maxPos.length > 0 ? (maxPos[0] as any).position + 1 : 0;
+
+  await supabase.from('playlist_songs').insert({
+    playlist_id: playlistId,
+    track_id: track.id,
+    title: track.title,
+    artist: track.artist,
+    album: track.album,
+    thumb: track.thumb,
+    duration: track.duration,
+    position: nextPos,
+  });
+}
+
+async function handleRemoveSongFromPlaylist(playlistId: string, trackId: string) {
+  if (!currentUser) return;
+  await supabase
+    .from('playlist_songs')
+    .delete()
+    .eq('playlist_id', playlistId)
+    .eq('track_id', trackId);
+}
+
+async function loadPlaylistTracks(playlistId: string) {
+  if (!currentUser) return [];
+  const { data } = await supabase
+    .from('playlist_songs')
+    .select('*')
+    .eq('playlist_id', playlistId)
+    .order('position', { ascending: true });
+
+  return (data || []) as PlaylistSong[];
+}
+
+async function showPlaylistsPage() {
+  if (!currentUser) { showAuthPage(); return; }
+
+  // Only push to history if not going back from detail
+  if (playlistDetailPage.classList.contains('hidden')) {
+    if (resultsPage.classList.contains('hidden')) pushPage('landing');
+    else pushPage('results');
+  }
+
+  hideAllPages();
+  playlistsPage.classList.remove('hidden');
+
+  await loadPlaylists();
+
+  if (userPlaylists.length === 0) {
+    playlistsGrid.innerHTML = '<div class="empty-state">Belum ada playlist.<br>Buat playlist baru untuk menyimpan lagu favoritmu.</div>';
+    return;
+  }
+
+  playlistsGrid.innerHTML = userPlaylists.map(p => `
+    <div class="playlist-card" data-id="${p.id}">
+      <div class="playlist-card-icon">
+        <svg width="40" height="40" viewBox="0 0 24 24" fill="currentColor"><path d="M15 6H3v2h12V6zm0 4H3v2h12v-2zM3 16h8v-2H3v2zM17 6v8.18c-.31-.11-.65-.18-1-.18-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3V8h3V6h-5z"/></svg>
+      </div>
+      <div class="playlist-card-info">
+        <div class="playlist-card-name">${esc(p.name)}</div>
+        <div class="playlist-card-sub">Playlist</div>
+      </div>
+      <button class="playlist-card-delete" data-id="${p.id}" title="Hapus playlist">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg>
+      </button>
+    </div>`).join('');
+
+  playlistsGrid.querySelectorAll('.playlist-card').forEach(card => {
+    card.addEventListener('click', (e) => {
+      if ((e.target as HTMLElement).closest('.playlist-card-delete')) return;
+      const id = (card as HTMLElement).dataset.id!;
+      showPlaylistDetailPage(id);
+    });
+  });
+
+  playlistsGrid.querySelectorAll('.playlist-card-delete').forEach(btn => {
+    btn.addEventListener('click', async (e) => {
+      e.stopPropagation();
+      const id = (btn as HTMLElement).dataset.id!;
+      if (confirm('Hapus playlist ini?')) {
+        await handleDeletePlaylist(id);
+        showPlaylistsPage();
+      }
+    });
+  });
+}
+
+async function showPlaylistDetailPage(playlistId: string) {
+  if (!currentUser) return;
+
+  currentPlaylistId = playlistId;
+  const playlist = userPlaylists.find(p => p.id === playlistId);
+  if (!playlist) return;
+
+  hideAllPages();
+  playlistDetailPage.classList.remove('hidden');
+  playlistDetailTitle.textContent = playlist.name;
+  playlistDetailGrid.innerHTML = '<div class="loading-text">Memuat lagu...</div>';
+
+  currentPlaylistTracks = await loadPlaylistTracks(playlistId);
+
+  if (currentPlaylistTracks.length === 0) {
+    playlistDetailGrid.innerHTML = '<div class="empty-state">Playlist ini kosong.<br>Tambahkan lagu dari player atau pencarian.</div>';
+    return;
+  }
+
+  renderPlaylistTracks();
+}
+
+function renderPlaylistTracks() {
+  const tracks: Track[] = currentPlaylistTracks.map(ps => ({
+    id: ps.track_id,
+    title: ps.title || 'Unknown',
+    artist: ps.artist || 'Unknown',
+    artistImg: '',
+    album: ps.album || '',
+    albumId: 0,
+    duration: ps.duration || '',
+    durSec: 0,
+    thumb: ps.thumb || '',
+    preview: '',
+    views: 0,
+    viewsText: '',
+    link: '',
+    isOfficial: false,
+  }));
+
+  playlistDetailGrid.className = 'r-grid';
+  playlistDetailGrid.innerHTML = tracks.map((t, i) => `
+    <div class="card" data-i="${i}">
+      <div class="card-img-wrap">
+        <img class="card-img" src="${t.thumb}" alt="" loading="lazy"
+          onerror="this.style.background='#1a1a2e'; this.src='data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 1 1%22><rect fill=%22%231a1a2e%22 width=%221%22 height=%221%22/></svg>'">
+        <button class="card-play" data-i="${i}">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
+        </button>
+        <button class="like-btn ${likedSongIds.has(t.id) ? 'liked' : ''}" data-track-id="${t.id}">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg>
+        </button>
+        <button class="card-remove-from-playlist" data-track-id="${t.id}" title="Hapus dari playlist">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </div>
+      <div class="card-title">${esc(t.title)}</div>
+      <div class="card-sub">${esc(t.artist)} · ${t.duration}</div>
+    </div>`).join('');
+
+  playlistDetailGrid.querySelectorAll('.card').forEach(card => {
+    card.addEventListener('click', (e) => {
+      if ((e.target as HTMLElement).closest('.like-btn') || (e.target as HTMLElement).closest('.card-remove-from-playlist')) return;
+      const i = parseInt((card as HTMLElement).dataset.i || '0');
+      queue = [...tracks];
+      queueIdx = i;
+      playCurrent();
+    });
+  });
+
+  playlistDetailGrid.querySelectorAll('.like-btn').forEach(btn => {
+    btn.addEventListener('click', async (e) => {
+      e.stopPropagation();
+      const trackId = (btn as HTMLElement).dataset.trackId!;
+      const track = tracks.find(t => t.id === trackId);
+      if (track) {
+        await toggleLike(track);
+        btn.classList.toggle('liked', likedSongIds.has(trackId));
+      }
+    });
+  });
+
+  playlistDetailGrid.querySelectorAll('.card-remove-from-playlist').forEach(btn => {
+    btn.addEventListener('click', async (e) => {
+      e.stopPropagation();
+      const trackId = (btn as HTMLElement).dataset.trackId!;
+      if (currentPlaylistId && confirm('Hapus lagu dari playlist?')) {
+        await handleRemoveSongFromPlaylist(currentPlaylistId, trackId);
+        currentPlaylistTracks = currentPlaylistTracks.filter(ps => ps.track_id !== trackId);
+        renderPlaylistTracks();
+      }
+    });
+  });
+}
+
+function showAddToPlaylistModal(track: Track) {
+  if (!currentUser) { showAuthPage(); return; }
+  addToPlaylistTrack = track;
+  addPlaylistModal.classList.remove('hidden');
+  renderPlaylistModalList();
+}
+
+function hideAddToPlaylistModal() {
+  addPlaylistModal.classList.add('hidden');
+  addToPlaylistTrack = null;
+}
+
+async function renderPlaylistModalList() {
+  await loadPlaylists();
+
+  if (userPlaylists.length === 0) {
+    addPlaylistList.innerHTML = '<div class="empty-state-sm">Belum ada playlist</div>';
+    return;
+  }
+
+  addPlaylistList.innerHTML = userPlaylists.map(p => `
+    <button class="playlist-modal-item" data-id="${p.id}">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M15 6H3v2h12V6zm0 4H3v2h12v-2zM3 16h8v-2H3v2zM17 6v8.18c-.31-.11-.65-.18-1-.18-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3V8h3V6h-5z"/></svg>
+      <span>${esc(p.name)}</span>
+    </button>`).join('');
+
+  addPlaylistList.querySelectorAll('.playlist-modal-item').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      const id = (btn as HTMLElement).dataset.id!;
+      if (addToPlaylistTrack) {
+        await handleAddSongToPlaylist(id, addToPlaylistTrack);
+        hideAddToPlaylistModal();
+      }
+    });
+  });
+}
+
+function showCreatePlaylistModalFromButton() {
+  createPlaylistModal.classList.remove('hidden');
+  newPlaylistName.value = '';
+  newPlaylistName.focus();
+}
+
+function hideCreatePlaylistModal() {
+  createPlaylistModal.classList.add('hidden');
+}
+
+async function handleCreatePlaylistFromModal() {
+  const name = newPlaylistName.value.trim();
+  if (!name) return;
+
+  savePlaylistBtn.disabled = true;
+  const created = await handleCreatePlaylist(name);
+  savePlaylistBtn.disabled = false;
+
+  if (created) {
+    hideCreatePlaylistModal();
+    if (addToPlaylistTrack) {
+      await handleAddSongToPlaylist(created.id, addToPlaylistTrack);
+      hideAddToPlaylistModal();
+    } else {
+      showPlaylistsPage();
+    }
+  }
+}
+
+// Page navigation stack
+let pageHistory: string[] = [];
+
+function pushPage(page: string) {
+  pageHistory.push(page);
+}
+
+function popPage(): string {
+  return pageHistory.pop() || 'landing';
+}
 function showResults() {
+  hideAllPages();
   landing.classList.add('hidden');
   resultsPage.classList.remove('hidden');
 }
 
 function showLanding() {
+  hideAllPages();
   landing.classList.remove('hidden');
   resultsPage.classList.add('hidden');
   player.classList.add('hidden');
   audio.pause();
   audio.src = '';
+  pageHistory = [];
+}
+
+function showLikedPage() {
+  hideAllPages();
+  likedPage.classList.remove('hidden');
+}
+
+function showPlaylistsPageView() {
+  hideAllPages();
+  playlistsPage.classList.remove('hidden');
+}
+
+function showPlaylistDetailView() {
+  hideAllPages();
+  playlistDetailPage.classList.remove('hidden');
+}
+
+function hideAllPages() {
+  landing.classList.add('hidden');
+  resultsPage.classList.add('hidden');
+  likedPage.classList.add('hidden');
+  playlistsPage.classList.add('hidden');
+  playlistDetailPage.classList.add('hidden');
+  authPage.classList.add('hidden');
 }
 
 function setLoading() {
@@ -155,13 +1003,14 @@ function pushNav(label: string) {
   showNav(label);
 }
 
-function renderCards(tracks: Track[]) {
-  if (viewMode === 'list') {
+function renderCards(tracks: Track[], container?: HTMLElement) {
+  const grid = container || rGrid;
+  if (viewMode === 'list' && !container) {
     renderList(tracks);
     return;
   }
-  rGrid.className = 'r-grid';
-  rGrid.innerHTML = tracks.map((t, i) => `
+  grid.className = 'r-grid';
+  grid.innerHTML = tracks.map((t, i) => `
     <div class="card" data-i="${i}">
       <div class="card-img-wrap">
         <img class="card-img" src="${t.thumb}" alt="" loading="lazy"
@@ -169,13 +1018,17 @@ function renderCards(tracks: Track[]) {
         <button class="card-play" data-i="${i}">
           <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
         </button>
+        <button class="like-btn ${likedSongIds.has(t.id) ? 'liked' : ''}" data-track-id="${t.id}">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg>
+        </button>
       </div>
       <div class="card-title">${esc(t.title)}</div>
       <div class="card-sub">${esc(t.artist)} · ${t.duration}</div>
     </div>`).join('');
 
-  rGrid.querySelectorAll('.card').forEach(card => {
-    card.addEventListener('click', () => {
+  grid.querySelectorAll('.card').forEach(card => {
+    card.addEventListener('click', (e) => {
+      if ((e.target as HTMLElement).closest('.like-btn')) return;
       const i = parseInt((card as HTMLElement).dataset.i || '0');
       queue = [...tracks];
       queueIdx = i;
@@ -183,7 +1036,19 @@ function renderCards(tracks: Track[]) {
     });
   });
 
-  highlightPlaying();
+  grid.querySelectorAll('.like-btn').forEach(btn => {
+    btn.addEventListener('click', async (e) => {
+      e.stopPropagation();
+      const trackId = (btn as HTMLElement).dataset.trackId!;
+      const track = tracks.find(t => t.id === trackId);
+      if (track) {
+        await toggleLike(track);
+        btn.classList.toggle('liked', likedSongIds.has(trackId));
+      }
+    });
+  });
+
+  if (!container) highlightPlaying();
 }
 
 function renderList(tracks: Track[]) {
@@ -197,6 +1062,9 @@ function renderList(tracks: Track[]) {
         <button class="card-play" data-i="${i}">
           <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
         </button>
+        <button class="like-btn ${likedSongIds.has(t.id) ? 'liked' : ''}" data-track-id="${t.id}">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg>
+        </button>
       </div>
       <div class="card-info">
         <div class="card-title">${esc(t.title)}</div>
@@ -206,11 +1074,24 @@ function renderList(tracks: Track[]) {
     </div>`).join('');
 
   rGrid.querySelectorAll('.card').forEach(card => {
-    card.addEventListener('click', () => {
+    card.addEventListener('click', (e) => {
+      if ((e.target as HTMLElement).closest('.like-btn')) return;
       const i = parseInt((card as HTMLElement).dataset.i || '0');
       queue = [...tracks];
       queueIdx = i;
       playCurrent();
+    });
+  });
+
+  rGrid.querySelectorAll('.like-btn').forEach(btn => {
+    btn.addEventListener('click', async (e) => {
+      e.stopPropagation();
+      const trackId = (btn as HTMLElement).dataset.trackId!;
+      const track = tracks.find(t => t.id === trackId);
+      if (track) {
+        await toggleLike(track);
+        btn.classList.toggle('liked', likedSongIds.has(trackId));
+      }
     });
   });
 
@@ -316,6 +1197,7 @@ function highlightPlaying() {
   });
 }
 
+// ===== PLAYER =====
 async function playCurrent() {
   if (queueIdx < 0 || queueIdx >= queue.length) return;
   const track = queue[queueIdx];
@@ -329,6 +1211,8 @@ async function playCurrent() {
   highlightPlaying();
   playerBuffer.classList.remove('hidden');
   fetchLyrics(track.title, track.artist);
+  updatePlayerLikeBtn();
+
   if (fsOpen) {
     fsCover.src = track.thumb;
     fsBgImg.src = track.thumb;
@@ -351,6 +1235,7 @@ async function playCurrent() {
   }
 }
 
+// ===== LYRICS =====
 async function fetchLyrics(track: string, artist: string) {
   currentLyrics = [];
   currentActiveIdx = -1;
@@ -497,6 +1382,7 @@ function openFs() {
   fsLyricsToggle.classList.remove('active');
   fsLyricsToggleText.textContent = 'Lihat Lirik';
   syncFs();
+  updatePlayerLikeBtn();
 }
 
 function closeFs() {
@@ -515,16 +1401,23 @@ function syncFs() {
   }
   fsIcoPlay.style.display = audio.paused ? '' : 'none';
   fsIcoPause.style.display = audio.paused ? 'none' : '';
-  const volPct = Math.round(audio.volume * 100);
-  fsVolFill.style.width = volPct + '%';
 }
 
+// ===== SEARCH =====
 async function doSearch(q: string) {
   if (!q.trim()) return;
+  if (!currentUser) {
+    showAuthPage();
+    return;
+  }
   showResults();
   setLoading();
   rTitle.textContent = `"${q}"`;
   searchInput2.value = q;
+  activeFilter = 'all';
+  rTabs.querySelectorAll('.r-tab').forEach(tab => {
+    tab.classList.toggle('active', (tab as HTMLElement).dataset.f === 'all');
+  });
 
   try {
     const res = await fetch(`/api/search?q=${encodeURIComponent(q)}`);
@@ -548,6 +1441,124 @@ async function doSearch(q: string) {
   }
 }
 
+// ===== EVENT LISTENERS =====
+
+// Auth events
+loginBtn.addEventListener('click', handleLogin);
+loginPassword.addEventListener('keydown', e => { if (e.key === 'Enter') handleLogin(); });
+registerBtn.addEventListener('click', handleRegister);
+regPassword.addEventListener('keydown', e => { if (e.key === 'Enter') handleRegister(); });
+forgotBtn.addEventListener('click', handleForgotPassword);
+forgotUsername.addEventListener('keydown', e => { if (e.key === 'Enter') handleForgotPassword(); });
+showRegisterBtn.addEventListener('click', (e) => { e.preventDefault(); showAuthView('register'); });
+showLoginBtn.addEventListener('click', (e) => { e.preventDefault(); showAuthView('login'); });
+forgotPassLink.addEventListener('click', (e) => { e.preventDefault(); showAuthView('forgot'); });
+backToLoginLink.addEventListener('click', (e) => { e.preventDefault(); showAuthView('login'); });
+logoutBtn.addEventListener('click', handleLogout);
+
+// User menu
+userBtn.addEventListener('click', (e) => {
+  e.stopPropagation();
+  userDropdown.classList.toggle('hidden');
+});
+
+document.addEventListener('click', () => {
+  userDropdown.classList.add('hidden');
+});
+
+likedSongsMenuBtn.addEventListener('click', () => {
+  userDropdown.classList.add('hidden');
+  showLikedSongsPage();
+});
+
+playlistsMenuBtn.addEventListener('click', () => {
+  userDropdown.classList.add('hidden');
+  showPlaylistsPage();
+});
+
+// Player like/playlist buttons
+pLikeBtn.addEventListener('click', async () => {
+  if (queueIdx < 0 || queueIdx >= queue.length) return;
+  await toggleLike(queue[queueIdx]);
+});
+
+pPlaylistBtn.addEventListener('click', () => {
+  if (queueIdx < 0 || queueIdx >= queue.length) return;
+  showAddToPlaylistModal(queue[queueIdx]);
+});
+
+fsLikeBtn.addEventListener('click', async () => {
+  if (queueIdx < 0 || queueIdx >= queue.length) return;
+  await toggleLike(queue[queueIdx]);
+});
+
+fsPlaylistBtn.addEventListener('click', () => {
+  if (queueIdx < 0 || queueIdx >= queue.length) return;
+  showAddToPlaylistModal(queue[queueIdx]);
+});
+
+// Back buttons
+likedBack.addEventListener('click', () => {
+  const prev = popPage();
+  if (prev === 'results') showResults();
+  else showLanding();
+});
+
+playlistsBack.addEventListener('click', () => {
+  const prev = popPage();
+  if (prev === 'results') showResults();
+  else showLanding();
+});
+
+playlistDetailBack.addEventListener('click', () => {
+  showPlaylistsPage();
+});
+
+// Create playlist button in playlists page
+createPlaylistBtn.addEventListener('click', showCreatePlaylistModalFromButton);
+
+// Playlist detail play all / shuffle
+playlistDetailPlay.addEventListener('click', async () => {
+  if (!currentPlaylistId) return;
+  const tracks = currentPlaylistTracks.map(ps => ({
+    id: ps.track_id, title: ps.title || 'Unknown', artist: ps.artist || 'Unknown',
+    artistImg: '', album: ps.album || '', albumId: 0, duration: ps.duration || '',
+    durSec: 0, thumb: ps.thumb || '', preview: '', views: 0, viewsText: '',
+    link: '', isOfficial: false,
+  }));
+  if (tracks.length === 0) return;
+  queue = tracks;
+  queueIdx = 0;
+  playCurrent();
+});
+
+playlistDetailShuffle.addEventListener('click', async () => {
+  if (!currentPlaylistId) return;
+  const tracks = currentPlaylistTracks.map(ps => ({
+    id: ps.track_id, title: ps.title || 'Unknown', artist: ps.artist || 'Unknown',
+    artistImg: '', album: ps.album || '', albumId: 0, duration: ps.duration || '',
+    durSec: 0, thumb: ps.thumb || '', preview: '', views: 0, viewsText: '',
+    link: '', isOfficial: false,
+  }));
+  if (tracks.length === 0) return;
+  queue = [...tracks];
+  for (let i = queue.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [queue[i], queue[j]] = [queue[j], queue[i]];
+  }
+  queueIdx = 0;
+  playCurrent();
+});
+
+// Modals
+addPlaylistClose.addEventListener('click', hideAddToPlaylistModal);
+addPlaylistBackdrop.addEventListener('click', hideAddToPlaylistModal);
+createPlaylistClose.addEventListener('click', hideCreatePlaylistModal);
+createPlaylistBackdrop.addEventListener('click', hideCreatePlaylistModal);
+savePlaylistBtn.addEventListener('click', handleCreatePlaylistFromModal);
+newPlaylistName.addEventListener('keydown', e => { if (e.key === 'Enter') handleCreatePlaylistFromModal(); });
+
+// Search
 rTabs.addEventListener('click', (e: MouseEvent) => {
   const tab = (e.target as HTMLElement).closest('.r-tab') as HTMLElement;
   if (!tab) return;
@@ -641,8 +1652,6 @@ audio.addEventListener('ended', () => {
   }
 });
 
-// pBar and fsBar click/drag handled by initBarDrag below
-
 pVol.addEventListener('click', (e: MouseEvent) => {
   const r = pVol.getBoundingClientRect();
   const p = Math.max(0, Math.min(1, (e.clientX - r.left) / r.width));
@@ -663,7 +1672,7 @@ lyricsBackdrop.addEventListener('click', closeLyrics);
 
 player.addEventListener('click', (e: MouseEvent) => {
   const t = e.target as HTMLElement;
-  if (t.closest('.pb') || t.closest('.p-bar') || t.closest('.p-bar-fill') || t.closest('.p-vol') || t.closest('.player-buffer')) return;
+  if (t.closest('.pb') || t.closest('.p-bar') || t.closest('.p-bar-fill') || t.closest('.p-vol') || t.closest('.player-buffer') || t.closest('.p-like-btn') || t.closest('.p-playlist-btn')) return;
   openFs();
 });
 
@@ -683,12 +1692,18 @@ fsNext.addEventListener('click', () => {
   if (queueIdx < queue.length - 1) { queueIdx++; playCurrent(); }
 });
 
-// fsBar click/drag handled by initBarDrag below
-
 fsLyricsToggle.addEventListener('click', toggleFsLyrics);
 
 document.addEventListener('keydown', (e) => {
   if (e.key === 'Escape') {
+    if (addPlaylistModal && !addPlaylistModal.classList.contains('hidden')) {
+      hideAddToPlaylistModal();
+      return;
+    }
+    if (createPlaylistModal && !createPlaylistModal.classList.contains('hidden')) {
+      hideCreatePlaylistModal();
+      return;
+    }
     if (fsOpen) closeFs();
     else if (lyricsOpen) closeLyrics();
   }
@@ -825,3 +1840,11 @@ initBarDrag(fsBar, (pct) => {
   if (!audio.duration) return;
   audio.currentTime = pct * audio.duration;
 });
+
+// ===== INIT =====
+(async () => {
+  await initAuth();
+  if (currentUser) {
+    await loadLikedSongs();
+  }
+})();

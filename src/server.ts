@@ -213,7 +213,7 @@ function parseLrc(raw: string): LrcLine[] {
   return lines;
 }
 
-const streamProcesses = new Map<string, import('child_process').ChildProcess>();
+const activeDownloads = new Map<string, Promise<void>>();
 
 function getContentType(filePath: string): string {
   if (filePath.endsWith('.webm')) return 'audio/webm';
@@ -223,126 +223,123 @@ function getContentType(filePath: string): string {
   return 'audio/webm';
 }
 
-app.get('/api/stream', (req: Request, res: Response) => {
+function serveFile(req: Request, res: Response, filePath: string) {
+  const stat = fs.statSync(filePath);
+  const fileSize = stat.size;
+  const contentType = getContentType(filePath);
+
+  res.setHeader('Accept-Ranges', 'bytes');
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Content-Type', contentType);
+  res.setHeader('X-Accel-Buffering', 'no');
+
+  const range = req.headers.range;
+  if (range) {
+    const parts = range.replace(/bytes=/, '').split('-');
+    const start = parseInt(parts[0], 10);
+    const end = parts[1] ? parseInt(parts[1], 10) : fileSize - 1;
+    const chunkSize = end - start + 1;
+
+    res.writeHead(206, {
+      'Content-Range': `bytes ${start}-${end}/${fileSize}`,
+      'Content-Length': chunkSize,
+    });
+    fs.createReadStream(filePath, { start, end }).pipe(res);
+  } else {
+    res.writeHead(200, { 'Content-Length': fileSize });
+    fs.createReadStream(filePath).pipe(res);
+  }
+}
+
+function downloadAudio(query: string, outPath: string): Promise<void> {
+  const existing = activeDownloads.get(outPath);
+  if (existing) return existing;
+
+  const promise = new Promise<void>((resolve, reject) => {
+    console.log('[stream] downloading:', query);
+
+    let downloadOk = false;
+
+    const ytdlp = spawn('yt-dlp', [
+      '--no-warnings', '--ignore-errors', '--no-playlist',
+      '--socket-timeout', '10',
+      '--retries', '3',
+      '--concurrent-fragments', '4',
+      '-f', 'bestaudio',
+      '--match-filter', 'is_live!=true',
+      '-o', '-',
+      `ytsearch1:${query} official audio`,
+    ], { stdio: ['ignore', 'pipe', 'pipe'] });
+
+    const tmpPath = outPath + '.tmp';
+    const fileStream = fs.createWriteStream(tmpPath);
+
+    ytdlp.stdout.on('data', (chunk: Buffer) => {
+      fileStream.write(chunk);
+    });
+
+    ytdlp.on('close', (code) => {
+      console.log('[stream] yt-dlp exit', code);
+      fileStream.end(() => {
+        if (code === 0 && downloadOk) {
+          try {
+            fs.renameSync(tmpPath, outPath);
+            console.log('[stream] download done:', query);
+            resolve();
+          } catch (err) {
+            try { fs.unlinkSync(tmpPath); } catch {}
+            reject(err);
+          }
+        } else {
+          try { fs.unlinkSync(tmpPath); } catch {}
+          reject(new Error(`yt-dlp exited with code ${code}`));
+        }
+      });
+    });
+
+    ytdlp.stdout.on('end', () => {
+      downloadOk = true;
+    });
+
+    ytdlp.stderr.on('data', (d: Buffer) => {
+      const m = d.toString();
+      if (m.includes('ERROR')) console.error('[yt-dlp]', m.trim());
+    });
+
+    ytdlp.on('error', (err) => {
+      console.error('[stream err]', err.message);
+      fileStream.end(() => {
+        try { fs.unlinkSync(tmpPath); } catch {}
+        reject(err);
+      });
+    });
+  });
+
+  promise.finally(() => activeDownloads.delete(outPath));
+  activeDownloads.set(outPath, promise);
+  return promise;
+}
+
+app.get('/api/stream', async (req: Request, res: Response) => {
   const query = (req.query.q as string || '').trim();
   if (!query) { res.status(400).json({ error: 'Query kosong' }); return; }
 
   const hash = crypto.createHash('md5').update(query).digest('hex');
   const outPath = path.join(TEMP_DIR, `${hash}.webm`);
 
-  const serveFile = () => {
-    const stat = fs.statSync(outPath);
-    const fileSize = stat.size;
-    const contentType = getContentType(outPath);
-
-    res.setHeader('Accept-Ranges', 'bytes');
-    res.setHeader('Access-Control-Allow-Origin', '*');
-    res.setHeader('Content-Type', contentType);
-
-    const range = req.headers.range;
-    if (range) {
-      const parts = range.replace(/bytes=/, '').split('-');
-      const start = parseInt(parts[0], 10);
-      const end = parts[1] ? parseInt(parts[1], 10) : fileSize - 1;
-      const chunkSize = end - start + 1;
-
-      res.writeHead(206, {
-        'Content-Range': `bytes ${start}-${end}/${fileSize}`,
-        'Content-Length': chunkSize,
-      });
-      fs.createReadStream(outPath, { start, end }).pipe(res);
-    } else {
-      res.writeHead(200, { 'Content-Length': fileSize });
-      fs.createReadStream(outPath).pipe(res);
-    }
-  };
-
-  if (fs.existsSync(outPath)) {
+  if (fs.existsSync(outPath) && fs.statSync(outPath).size > 0) {
     console.log('[stream] cache hit:', query);
-    serveFile();
+    serveFile(req, res, outPath);
     return;
   }
 
-  console.log('[stream]', query);
-
-  const ytdlp = spawn('yt-dlp', [
-    '--no-warnings', '--ignore-errors', '--no-playlist',
-    '--socket-timeout', '10',
-    '--retries', '3',
-    '--concurrent-fragments', '4',
-    '-f', 'bestaudio',
-    '--match-filter', 'is_live!=true',
-    '-o', '-',
-    `ytsearch1:${query} official audio`,
-  ], { stdio: ['ignore', 'pipe', 'pipe'] });
-
-  streamProcesses.set(hash, ytdlp);
-
-  let headersSent = false;
-  let done = false;
-  const fileStream = fs.createWriteStream(outPath);
-
-  const cleanup = () => {
-    if (!fileStream.destroyed) fileStream.end();
-    streamProcesses.delete(hash);
-  };
-
-  ytdlp.stdout.on('data', (chunk: Buffer) => {
-    if (done) return;
-    if (!headersSent) {
-      headersSent = true;
-      res.setHeader('Content-Type', 'audio/webm');
-      res.setHeader('Accept-Ranges', 'bytes');
-      res.setHeader('Access-Control-Allow-Origin', '*');
-      res.status(200);
-      res.flushHeaders();
-    }
-    res.write(chunk);
-    fileStream.write(chunk);
-  });
-
-  ytdlp.stdout.on('end', () => {
-    fileStream.end();
-    if (!done) {
-      done = true;
-      console.log('[stream] done');
-      if (headersSent && !res.writableEnded) res.end();
-    }
-    cleanup();
-  });
-
-  ytdlp.on('close', (code) => {
-    console.log('[stream] exit', code);
-    if (!done) {
-      done = true;
-      if (!headersSent) res.status(500).json({ error: 'Tidak ada data audio' });
-      else if (!res.writableEnded) res.end();
-    }
-    cleanup();
-  });
-
-  ytdlp.stderr.on('data', (d: Buffer) => {
-    const m = d.toString();
-    if (m.includes('ERROR')) console.error('[yt-dlp]', m.trim());
-  });
-
-  ytdlp.on('error', (err) => {
-    console.error('[stream err]', err.message);
-    if (!done) {
-      done = true;
-      if (!headersSent) res.status(500).json({ error: 'Gagal stream' });
-      else res.end();
-    }
-    cleanup();
-  });
-
-  req.on('close', () => {
-    if (!ytdlp.killed) {
-      ytdlp.kill('SIGTERM');
-      console.log('[stream] client disconnected');
-    }
-    cleanup();
-  });
+  try {
+    await downloadAudio(query, outPath);
+    serveFile(req, res, outPath);
+  } catch (err) {
+    console.error('[stream] failed:', err);
+    if (!res.headersSent) res.status(500).json({ error: 'Gagal memuat audio' });
+  }
 });
 
 app.get('/api/trending', async (_req: Request, res: Response) => {

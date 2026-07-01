@@ -9,8 +9,81 @@
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
+  <!-- AUTH PAGE -->
+  <div class="auth-page" id="authPage">
+    <div class="gradient-bg">
+      <div class="orb orb-1"></div>
+      <div class="orb orb-2"></div>
+      <div class="orb orb-3"></div>
+    </div>
+    <div class="auth-content">
+      <div class="auth-card">
+        <!-- Login Form -->
+        <div class="auth-form" id="loginForm">
+          <div class="auth-logo">
+            <img src="https://ik.imagekit.io/fuagv7oun/orimanew.png" alt="Orima" class="auth-logo-img">
+          </div>
+          <h2 class="auth-title">Login</h2>
+          <div class="auth-input-group">
+            <input type="text" id="loginUsername" placeholder="Username" autocomplete="username" spellcheck="false">
+          </div>
+          <div class="auth-input-group">
+            <input type="password" id="loginPassword" placeholder="Password" autocomplete="current-password">
+          </div>
+          <div class="auth-error" id="loginError"></div>
+          <button class="auth-btn" id="loginBtn">Login</button>
+          <div class="auth-links">
+            <a href="#" id="forgotPassLink">Forgot Password?</a>
+            <a href="#" id="showRegister">Buat Akun Baru</a>
+          </div>
+        </div>
+
+        <!-- Register Form -->
+        <div class="auth-form hidden" id="registerForm">
+          <div class="auth-logo">
+            <img src="https://ik.imagekit.io/fuagv7oun/orimanew.png" alt="Orima" class="auth-logo-img">
+          </div>
+          <h2 class="auth-title">Register</h2>
+          <div class="auth-input-group">
+            <input type="text" id="regName" placeholder="Nama" autocomplete="name">
+          </div>
+          <div class="auth-input-group">
+            <input type="text" id="regUsername" placeholder="Username" autocomplete="username" spellcheck="false">
+          </div>
+          <div class="auth-input-group">
+            <input type="password" id="regPassword" placeholder="Password (min. 6 karakter)" autocomplete="new-password">
+          </div>
+          <div class="auth-error" id="registerError"></div>
+          <div class="auth-success" id="registerSuccess"></div>
+          <button class="auth-btn" id="registerBtn">Register</button>
+          <div class="auth-links">
+            <a href="#" id="showLogin">Sudah punya akun? Login</a>
+          </div>
+        </div>
+
+        <!-- Forgot Password Form -->
+        <div class="auth-form hidden" id="forgotForm">
+          <div class="auth-logo">
+            <img src="https://ik.imagekit.io/fuagv7oun/orimanew.png" alt="Orima" class="auth-logo-img">
+          </div>
+          <h2 class="auth-title">Reset Password</h2>
+          <p class="auth-subtitle">Masukkan username untuk reset password</p>
+          <div class="auth-input-group">
+            <input type="text" id="forgotUsername" placeholder="Username" autocomplete="username" spellcheck="false">
+          </div>
+          <div class="auth-error" id="forgotError"></div>
+          <div class="auth-success" id="forgotSuccess"></div>
+          <button class="auth-btn" id="forgotBtn">Reset Password</button>
+          <div class="auth-links">
+            <a href="#" id="backToLogin">Kembali ke Login</a>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <!-- LANDING -->
-  <div class="landing" id="landing">
+  <div class="landing hidden" id="landing">
     <div class="gradient-bg">
       <div class="orb orb-1"></div>
       <div class="orb orb-2"></div>
@@ -57,6 +130,30 @@
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
         </button>
       </div>
+      <div class="user-menu" id="userMenuWrap">
+        <button class="user-btn hidden" id="userBtn">
+          <div class="user-avatar" id="userAvatar">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/></svg>
+          </div>
+          <span id="userName"></span>
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M7.41 8.59L12 13.17l4.59-4.58L18 10l-6 6-6-6z"/></svg>
+        </button>
+        <div class="user-dropdown hidden" id="userDropdown">
+          <button class="dropdown-item" id="likedSongsMenuBtn">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg>
+            Liked Songs
+          </button>
+          <button class="dropdown-item" id="playlistsMenuBtn">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M15 6H3v2h12V6zm0 4H3v2h12v-2zM3 16h8v-2H3v2zM17 6v8.18c-.31-.11-.65-.18-1-.18-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3V8h3V6h-5z"/></svg>
+            Playlist
+          </button>
+          <div class="dropdown-divider"></div>
+          <button class="dropdown-item logout" id="logoutBtn">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M17 7l-1.41 1.41L18.17 11H8v2h10.17l-2.58 2.58L17 17l5-5zM4 5h8V3H4c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h8v-2H4V5z"/></svg>
+            Logout
+          </button>
+        </div>
+      </div>
     </header>
     <div class="r-body" id="rBody">
       <div class="r-title" id="rTitle"></div>
@@ -97,6 +194,94 @@
     </div>
   </div>
 
+  <!-- LIKED SONGS PAGE -->
+  <div class="results-page hidden" id="likedPage">
+    <div class="gradient-bg small">
+      <div class="orb orb-1"></div>
+      <div class="orb orb-2"></div>
+    </div>
+    <header class="r-header">
+      <div class="r-logo" id="goHome2">
+        <img src="https://ik.imagekit.io/fuagv7oun/orimanew.png" alt="Orima" class="r-logo-img">
+      </div>
+      <div class="r-page-title">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="#1db954"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg>
+        <span>Liked Songs</span>
+      </div>
+    </header>
+    <div class="r-body">
+      <button class="r-back" id="likedBack" style="margin-bottom:16px">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg>
+        Kembali
+      </button>
+      <div class="r-grid" id="likedGrid"></div>
+    </div>
+  </div>
+
+  <!-- PLAYLISTS PAGE -->
+  <div class="results-page hidden" id="playlistsPage">
+    <div class="gradient-bg small">
+      <div class="orb orb-1"></div>
+      <div class="orb orb-2"></div>
+    </div>
+    <header class="r-header">
+      <div class="r-logo" id="goHome3">
+        <img src="https://ik.imagekit.io/fuagv7oun/orimanew.png" alt="Orima" class="r-logo-img">
+      </div>
+      <div class="r-page-title">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="#1db954"><path d="M15 6H3v2h12V6zm0 4H3v2h12v-2zM3 16h8v-2H3v2zM17 6v8.18c-.31-.11-.65-.18-1-.18-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3V8h3V6h-5z"/></svg>
+        <span>Playlist</span>
+      </div>
+    </header>
+    <div class="r-body">
+      <div class="r-page-actions">
+        <button class="r-back" id="playlistsBack">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg>
+          Kembali
+        </button>
+        <button class="r-action-btn play-all" id="createPlaylistBtn">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/></svg>
+          Buat Playlist
+        </button>
+      </div>
+      <div class="playlists-grid" id="playlistsGrid"></div>
+    </div>
+  </div>
+
+  <!-- PLAYLIST DETAIL PAGE -->
+  <div class="results-page hidden" id="playlistDetailPage">
+    <div class="gradient-bg small">
+      <div class="orb orb-1"></div>
+      <div class="orb orb-2"></div>
+    </div>
+    <header class="r-header">
+      <div class="r-logo" id="goHome4">
+        <img src="https://ik.imagekit.io/fuagv7oun/orimanew.png" alt="Orima" class="r-logo-img">
+      </div>
+      <div class="r-page-title">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="#1db954"><path d="M15 6H3v2h12V6zm0 4H3v2h12v-2zM3 16h8v-2H3v2zM17 6v8.18c-.31-.11-.65-.18-1-.18-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3V8h3V6h-5z"/></svg>
+        <span id="playlistDetailTitle">Playlist</span>
+      </div>
+    </header>
+    <div class="r-body">
+      <button class="r-back" id="playlistDetailBack" style="margin-bottom:16px">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg>
+        Kembali
+      </button>
+      <div class="r-actions" style="display:flex;margin-bottom:20px">
+        <button class="r-action-btn play-all" id="playlistDetailPlay">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
+          Putar Semua
+        </button>
+        <button class="r-action-btn shuffle-all" id="playlistDetailShuffle">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M10.59 9.17L5.41 4 4 5.41l5.17 5.17 1.42-1.41zM14.5 4l2.04 2.04L4 18.59 5.41 20 17.96 7.46 20 9.5V4h-5.5zm.33 9.41l-1.41 1.41 3.13 3.13L14.5 20H20v-5.5l-2.04 2.04-3.13-3.13z"/></svg>
+          Acak Semua
+        </button>
+      </div>
+      <div class="r-grid" id="playlistDetailGrid"></div>
+    </div>
+  </div>
+
   <!-- PLAYER -->
   <div class="player hidden" id="player">
     <div class="player-buffer hidden" id="playerBuffer">
@@ -109,6 +294,12 @@
         <div class="p-title" id="pTitle">-</div>
         <div class="p-artist" id="pArtist">-</div>
       </div>
+      <button class="pb sm p-like-btn" id="pLikeBtn" title="Like">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M16.5 3c-1.74 0-3.41.81-4.5 2.09C10.91 3.81 9.24 3 7.5 3 4.42 3 2 5.42 2 8.5c0 3.78 3.4 6.86 8.55 11.54L12 21.35l1.45-1.32C18.6 15.36 22 12.28 22 8.5 22 5.42 19.58 3 16.5 3zm-4.4 15.55l-.1.1-.1-.1C7.14 14.24 4 11.39 4 8.5 4 6.5 5.5 5 7.5 5c1.54 0 3.04.99 3.57 2.36h1.87C13.46 5.99 14.96 5 16.5 5c2 0 3.5 1.5 3.5 3.5 0 2.89-3.14 5.74-7.9 10.05z"/></svg>
+      </button>
+      <button class="pb sm p-playlist-btn" id="pPlaylistBtn" title="Tambah ke Playlist">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M14 10H2v2h12v-2zm0-4H2v2h12V6zm4 8v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zM2 16h8v-2H2v2z"/></svg>
+      </button>
     </div>
     <div class="p-center">
       <div class="p-btns">
@@ -195,6 +386,14 @@
       <div class="fs-title" id="fsTitle">-</div>
       <div class="fs-artist" id="fsArtist">-</div>
     </div>
+    <div class="fs-extra-btns">
+      <button class="fs-btn" id="fsLikeBtn" title="Like">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor"><path d="M16.5 3c-1.74 0-3.41.81-4.5 2.09C10.91 3.81 9.24 3 7.5 3 4.42 3 2 5.42 2 8.5c0 3.78 3.4 6.86 8.55 11.54L12 21.35l1.45-1.32C18.6 15.36 22 12.28 22 8.5 22 5.42 19.58 3 16.5 3zm-4.4 15.55l-.1.1-.1-.1C7.14 14.24 4 11.39 4 8.5 4 6.5 5.5 5 7.5 5c1.54 0 3.04.99 3.57 2.36h1.87C13.46 5.99 14.96 5 16.5 5c2 0 3.5 1.5 3.5 3.5 0 2.89-3.14 5.74-7.9 10.05z"/></svg>
+      </button>
+      <button class="fs-btn" id="fsPlaylistBtn" title="Tambah ke Playlist">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor"><path d="M14 10H2v2h12v-2zm0-4H2v2h12V6zm4 8v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zM2 16h8v-2H2v2z"/></svg>
+      </button>
+    </div>
     <div class="fs-progress">
       <div class="fs-bar" id="fsBar">
         <div class="fs-bar-fill" id="fsBarFill"></div>
@@ -222,6 +421,37 @@
         <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor"><path d="M7 7h10v3l4-4-4-4v3H5v6h2V7zm10 10H7v-3l-4 4 4 4v-3h12v-6h-2v4z"/></svg>
         <span class="fs-repeat-badge hidden" id="fsRepeatBadge">1</span>
       </button>
+    </div>
+  </div>
+
+  <!-- ADD TO PLAYLIST MODAL -->
+  <div class="modal hidden" id="addPlaylistModal">
+    <div class="modal-backdrop" id="addPlaylistBackdrop"></div>
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3>Tambah ke Playlist</h3>
+        <button class="modal-close" id="addPlaylistClose">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </div>
+      <div class="modal-body" id="addPlaylistList"></div>
+    </div>
+  </div>
+
+  <!-- CREATE PLAYLIST MODAL -->
+  <div class="modal hidden" id="createPlaylistModal">
+    <div class="modal-backdrop" id="createPlaylistBackdrop"></div>
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3>Buat Playlist Baru</h3>
+        <button class="modal-close" id="createPlaylistClose">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </div>
+      <div class="modal-body">
+        <input type="text" id="newPlaylistName" placeholder="Nama playlist..." class="modal-input" autocomplete="off" spellcheck="false">
+        <button class="auth-btn" id="savePlaylistBtn" style="width:100%;margin-top:12px">Buat</button>
+      </div>
     </div>
   </div>
 

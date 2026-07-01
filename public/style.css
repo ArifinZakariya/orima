@@ -1735,7 +1735,19 @@ body {
 }
 
 .social-msg-time {
-  font-size: 11px; color: var(--text-sub); margin-left: auto;
+  font-size: 11px; color: var(--text-sub);
+}
+
+.social-msg-delete {
+  background: none; border: none;
+  color: #555; cursor: pointer;
+  padding: 4px; border-radius: 4px;
+  display: flex; margin-left: auto;
+  transition: all 0.2s;
+}
+
+.social-msg-delete:hover {
+  color: #f43f5e; background: rgba(244, 63, 94, 0.1);
 }
 
 .social-msg-caption {

@@ -1166,11 +1166,13 @@ function showPlaylistDetailView() {
   savePageState('playlistDetail', { playlistId: currentPlaylistId });
 }
 
-function showSocialPage() {
+function showSocialPage(skipPush?: boolean) {
   if (!currentUser) { showAuthPage(); return; }
 
-  if (resultsPage.classList.contains('hidden') && socialPage.classList.contains('hidden')) pushPage('landing');
-  else if (!resultsPage.classList.contains('hidden')) pushPage('results');
+  if (!skipPush) {
+    if (resultsPage.classList.contains('hidden') && socialPage.classList.contains('hidden')) pushPage('landing');
+    else if (!resultsPage.classList.contains('hidden')) pushPage('results');
+  }
 
   hideAllPages();
   socialPage.classList.remove('hidden');
@@ -1354,11 +1356,14 @@ function renderSocialChat() {
       </div>` : '';
 
     return `
-      <div class="social-msg">
+      <div class="social-msg" data-msg-id="${m.id || ''}">
         <div class="social-msg-header">
           <div class="social-msg-avatar">${avatarHtml}</div>
           <div class="social-msg-user">${esc(m.username)}</div>
           <div class="social-msg-time">${timeStr}</div>
+          ${m.user_id === currentUser?.id ? `<button class="social-msg-delete" data-msg-id="${m.id || ''}" title="Hapus postingan">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg>
+          </button>` : ''}
         </div>
         ${m.caption ? `<div class="social-msg-caption">${esc(m.caption)}</div>` : ''}
         ${trackHtml}
@@ -1384,6 +1389,23 @@ function renderSocialChat() {
       const playlistOwner = el.getAttribute('data-playlist-owner') || '';
       const playlistCount = el.getAttribute('data-playlist-count') || '0';
       showSharedPlaylistPage(playlistId, playlistName, playlistCover, playlistOwner, playlistCount);
+    });
+  });
+
+  // Delete own posts
+  socialChat.querySelectorAll('.social-msg-delete').forEach(btn => {
+    btn.addEventListener('click', async (e) => {
+      e.stopPropagation();
+      const msgId = (btn as HTMLElement).dataset.msgId;
+      if (!msgId || !confirm('Hapus postingan ini?')) return;
+      try {
+        const { error } = await supabase.from('social_messages').delete().eq('id', msgId);
+        if (error) throw error;
+        loadSocialMessages();
+      } catch (e) {
+        console.error('[deleteSocialMsg]', e);
+        alert('Gagal menghapus postingan');
+      }
     });
   });
 
@@ -1441,6 +1463,8 @@ function stopSocialPolling() {
 }
 
 // Social: send message
+let shareSourcePage: string = '';
+
 async function handleShareSend() {
   if (!currentUser || !userProfile || !shareTrack) return;
   const caption = shareCaption.value.trim();
@@ -1464,7 +1488,8 @@ async function handleShareSend() {
 
     if (error) throw error;
     hideShareModal();
-    showSocialPage();
+    pushPage(shareSourcePage || 'landing');
+    showSocialPage(true);
   } catch (e) {
     console.error('[handleShareSend]', e);
     alert('Gagal mengirim. Coba lagi.');
@@ -1480,6 +1505,10 @@ let sharePlaylistData: Playlist | null = null;
 function showSharePlaylistModal(playlist: Playlist) {
   if (!currentUser) return;
   sharePlaylistData = playlist;
+  // Remember source page
+  if (!playlistDetailPage.classList.contains('hidden')) shareSourcePage = 'playlists';
+  else if (!playlistsPage.classList.contains('hidden')) shareSourcePage = 'playlists';
+  else shareSourcePage = 'landing';
   shareCaption.value = '';
   sharePreview.innerHTML = `
     <div style="display:flex;align-items:center;gap:12px">
@@ -1522,7 +1551,8 @@ async function handleSharePlaylistSend() {
 
     if (error) throw error;
     hideShareModal();
-    showSocialPage();
+    pushPage('playlists');
+    showSocialPage(true);
   } catch (e) {
     console.error('[handleSharePlaylistSend]', e);
     alert('Gagal mengirim. Coba lagi.');
@@ -1689,6 +1719,12 @@ async function renderCopyPlaylistModalList() {
 function showShareModal(track: Track) {
   if (!currentUser) return;
   shareTrack = track;
+  // Remember source page before modal opens
+  if (!likedPage.classList.contains('hidden')) shareSourcePage = 'liked';
+  else if (!playlistDetailPage.classList.contains('hidden')) shareSourcePage = 'playlists';
+  else if (!socialPage.classList.contains('hidden')) shareSourcePage = 'social';
+  else if (!resultsPage.classList.contains('hidden')) shareSourcePage = 'results';
+  else shareSourcePage = 'landing';
   shareCaption.value = '';
   sharePreview.innerHTML = `
     <img class="share-preview-thumb" src="${esc(track.thumb)}" alt="">

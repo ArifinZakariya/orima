@@ -691,7 +691,6 @@ function updatePlayerLikeBtn() {
   if (queueIdx < 0 || queueIdx >= queue.length) return;
   const track = queue[queueIdx];
   const isLiked = likedSongIds.has(track.id);
-  pLikeBtn.classList.toggle('liked', isLiked);
   fsLikeBtn.classList.toggle('liked', isLiked);
 }
 

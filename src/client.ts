@@ -1205,6 +1205,11 @@ async function handleProfileSave() {
     if (profileAvatarData) userProfile.avatar_url = profileAvatarData;
     profileAvatarData = '';
 
+    // Sync avatar to all social messages
+    if (updates.avatar_url) {
+      await supabase.from('social_messages').update({ avatar_url: updates.avatar_url }).eq('user_id', currentUser.id);
+    }
+
     userNameDisplay.textContent = userProfile.display_name || userProfile.username;
     sidebarName.textContent = userProfile.display_name || userProfile.username;
     updateSidebarAvatar();
@@ -1254,6 +1259,9 @@ function renderSocialChat() {
     const initial = (m.username || '?')[0].toUpperCase();
     const time = new Date(m.created_at);
     const timeStr = time.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' });
+    const avatarHtml = m.avatar_url
+      ? `<img class="social-msg-avatar-img" src="${esc(m.avatar_url)}" alt="">`
+      : initial;
     const trackHtml = m.track_title ? `
       <div class="social-msg-track" data-title="${esc(m.track_title)}" data-artist="${esc(m.track_artist || '')}" data-thumb="${esc(m.track_thumb || '')}" data-dur="${esc(m.track_duration || '')}" data-preview="${esc(m.track_preview || '')}" data-id="${esc(m.track_id || '')}">
         <img class="social-msg-thumb" src="${esc(m.track_thumb || '')}" alt="">
@@ -1269,7 +1277,7 @@ function renderSocialChat() {
     return `
       <div class="social-msg">
         <div class="social-msg-header">
-          <div class="social-msg-avatar">${initial}</div>
+          <div class="social-msg-avatar">${avatarHtml}</div>
           <div class="social-msg-user">${esc(m.username)}</div>
           <div class="social-msg-time">${timeStr}</div>
         </div>
@@ -1399,6 +1407,7 @@ async function handleShareSend() {
     const { error } = await supabase.from('social_messages').insert({
       user_id: currentUser.id,
       username: userProfile.username || userProfile.display_name || 'Unknown',
+      avatar_url: userProfile.avatar_url || '',
       track_title: shareTrack.title,
       track_artist: shareTrack.artist,
       track_thumb: shareTrack.thumb,

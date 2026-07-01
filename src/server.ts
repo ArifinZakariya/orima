@@ -259,6 +259,7 @@ function downloadAudio(query: string, outPath: string): Promise<void> {
     console.log('[stream] downloading:', query);
 
     let downloadOk = false;
+    let settled = false;
 
     const ytdlp = spawn('yt-dlp', [
       '--no-warnings', '--ignore-errors', '--no-playlist',
@@ -281,6 +282,8 @@ function downloadAudio(query: string, outPath: string): Promise<void> {
     ytdlp.on('close', (code) => {
       console.log('[stream] yt-dlp exit', code);
       fileStream.end(() => {
+        if (settled) return;
+        settled = true;
         if (code === 0 && downloadOk) {
           try {
             fs.renameSync(tmpPath, outPath);
@@ -309,6 +312,8 @@ function downloadAudio(query: string, outPath: string): Promise<void> {
     ytdlp.on('error', (err) => {
       console.error('[stream err]', err.message);
       fileStream.end(() => {
+        if (settled) return;
+        settled = true;
         try { fs.unlinkSync(tmpPath); } catch {}
         reject(err);
       });

@@ -28,6 +28,7 @@ interface UserProfile {
   id: string;
   username: string;
   display_name: string;
+  avatar_url: string;
 }
 
 interface Playlist {
@@ -192,7 +193,46 @@ const sidebarName = document.getElementById('sidebarName') as HTMLDivElement;
 const sidebarLikedBtn = document.getElementById('sidebarLikedBtn') as HTMLButtonElement;
 const sidebarPlaylistsBtn = document.getElementById('sidebarPlaylistsBtn') as HTMLButtonElement;
 const sidebarLogoutBtn = document.getElementById('sidebarLogoutBtn') as HTMLButtonElement;
+const sidebarSocialBtn = document.getElementById('sidebarSocialBtn') as HTMLButtonElement;
 const hamburgerBtn = document.getElementById('hamburgerBtn') as HTMLButtonElement;
+
+// Social elements
+const socialPage = document.getElementById('socialPage') as HTMLDivElement;
+const socialChat = document.getElementById('socialChat') as HTMLDivElement;
+const socialBack = document.getElementById('socialBack') as HTMLButtonElement;
+const socialMenuBtn = document.getElementById('socialMenuBtn') as HTMLButtonElement;
+const goHome5 = document.getElementById('goHome5') as HTMLDivElement;
+const hamburgerBtnSocial = document.getElementById('hamburgerBtnSocial') as HTMLButtonElement;
+
+// Share modal elements
+const shareModal = document.getElementById('shareModal') as HTMLDivElement;
+const shareBackdrop = document.getElementById('shareBackdrop') as HTMLDivElement;
+const shareClose = document.getElementById('shareClose') as HTMLButtonElement;
+const sharePreview = document.getElementById('sharePreview') as HTMLDivElement;
+const shareCaption = document.getElementById('shareCaption') as HTMLTextAreaElement;
+const shareSendBtn = document.getElementById('shareSendBtn') as HTMLButtonElement;
+
+// Player share buttons
+const pShareBtn = document.getElementById('pShareBtn') as HTMLButtonElement;
+const fsShareBtn = document.getElementById('fsShareBtn') as HTMLButtonElement;
+
+// Profile elements
+const profilePage = document.getElementById('profilePage') as HTMLDivElement;
+const profileBack = document.getElementById('profileBack') as HTMLButtonElement;
+const profileAvatar = document.getElementById('profileAvatar') as HTMLDivElement;
+const profileAvatarInput = document.getElementById('profileAvatarInput') as HTMLInputElement;
+const profileName = document.getElementById('profileName') as HTMLInputElement;
+const profileUsername = document.getElementById('profileUsername') as HTMLInputElement;
+const profileEmail = document.getElementById('profileEmail') as HTMLInputElement;
+const profileSaveBtn = document.getElementById('profileSaveBtn') as HTMLButtonElement;
+const goHome6 = document.getElementById('goHome6') as HTMLDivElement;
+const hamburgerBtnProfile = document.getElementById('hamburgerBtnProfile') as HTMLButtonElement;
+const profileMenuBtn = document.getElementById('profileMenuBtn') as HTMLButtonElement;
+const sidebarProfileBtn = document.getElementById('sidebarProfileBtn') as HTMLButtonElement;
+
+// Register avatar
+const regAvatarInput = document.getElementById('regAvatarInput') as HTMLInputElement;
+const regAvatarPreview = document.getElementById('regAvatarPreview') as HTMLDivElement;
 
 // Safe null check helper
 function safe(id: string): HTMLElement | null { return document.getElementById(id); }
@@ -232,6 +272,32 @@ let currentPlaylistTracks: PlaylistSong[] = [];
 // Add to playlist state
 let addToPlaylistTrack: Track | null = null;
 
+// Social state
+let socialMsgs: any[] = [];
+let socialPollInterval: number | null = null;
+let shareTrack: Track | null = null;
+
+// Profile/avatar state
+let pendingAvatar: string = '';
+let profileAvatarData: string = '';
+
+// Page persistence
+function savePageState(page: string, extra?: any) {
+  try {
+    localStorage.setItem('orima_page', page);
+    if (extra) localStorage.setItem('orima_page_extra', JSON.stringify(extra));
+    else localStorage.removeItem('orima_page_extra');
+  } catch {}
+}
+
+function getPageState(): { page: string; extra?: any } {
+  try {
+    const page = localStorage.getItem('orima_page') || 'landing';
+    const extra = localStorage.getItem('orima_page_extra');
+    return { page, extra: extra ? JSON.parse(extra) : undefined };
+  } catch { return { page: 'landing' }; }
+}
+
 // ===== UTILITY =====
 function fmt(s: number): string {
   if (!s || isNaN(s)) return '0:00';
@@ -254,6 +320,7 @@ async function initAuth() {
     await loadProfile();
     hideAuthPage();
     updateUIForAuth();
+    await restorePage();
   } else {
     showAuthPage();
   }
@@ -264,6 +331,7 @@ async function initAuth() {
       await loadProfile();
       hideAuthPage();
       updateUIForAuth();
+      await restorePage();
     } else {
       currentUser = null;
       userProfile = null;
@@ -271,6 +339,30 @@ async function initAuth() {
       updateUIForAuth();
     }
   });
+}
+
+async function restorePage() {
+  const { page, extra } = getPageState();
+  if (page === 'results') {
+    const lastQuery = localStorage.getItem('orima_last_query') || '';
+    if (lastQuery) {
+      searchInput2.value = lastQuery;
+      await doSearch(lastQuery);
+    } else {
+      showLanding();
+    }
+  } else if (page === 'liked') {
+    await showLikedSongsPage();
+  } else if (page === 'playlists') {
+    await showPlaylistsPage();
+  } else if (page === 'playlistDetail' && extra?.playlistId) {
+    await showPlaylistsPage();
+    await showPlaylistDetailPage(extra.playlistId);
+  } else if (page === 'social') {
+    showSocialPage();
+  } else {
+    showLanding();
+  }
 }
 
 async function loadProfile() {
@@ -281,13 +373,14 @@ async function loadProfile() {
       userProfile = data;
       userNameDisplay.textContent = userProfile.display_name || userProfile.username;
     } else {
-      userProfile = { id: currentUser.id, username: currentUser.user_metadata?.username || '', display_name: currentUser.user_metadata?.display_name || '' };
+      userProfile = { id: currentUser.id, username: currentUser.user_metadata?.username || '', display_name: currentUser.user_metadata?.display_name || '', avatar_url: '' };
       userNameDisplay.textContent = userProfile.display_name || userProfile.username;
     }
   } catch (e) {
     console.error('[loadProfile]', e);
-    userProfile = { id: currentUser.id, username: '', display_name: '' };
+    userProfile = { id: currentUser.id, username: '', display_name: '', avatar_url: '' };
   }
+  updateSidebarAvatar();
 }
 
 function showAuthPage() {
@@ -298,6 +391,8 @@ function showAuthPage() {
   likedPage.classList.add('hidden');
   playlistsPage.classList.add('hidden');
   playlistDetailPage.classList.add('hidden');
+  socialPage.classList.add('hidden');
+  profilePage.classList.add('hidden');
 }
 
 function hideAuthPage() {
@@ -307,6 +402,8 @@ function hideAuthPage() {
   likedPage.classList.add('hidden');
   playlistsPage.classList.add('hidden');
   playlistDetailPage.classList.add('hidden');
+  socialPage.classList.add('hidden');
+  profilePage.classList.add('hidden');
 }
 
 function updateUIForAuth() {
@@ -425,7 +522,7 @@ async function handleRegister() {
   registerError.textContent = '';
 
   const email = `${username}@orima.app`;
-  const { error } = await supabase.auth.signUp({
+  const { data, error } = await supabase.auth.signUp({
     email,
     password,
     options: {
@@ -450,11 +547,19 @@ async function handleRegister() {
     regName.value = '';
     regUsername.value = '';
     regPassword.value = '';
+    regAvatarPreview.innerHTML = `<svg width="32" height="32" viewBox="0 0 24 24" fill="currentColor"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/></svg>`;
     // Auto login after register
     const { error: loginErr } = await supabase.auth.signInWithPassword({ email, password });
     if (!loginErr) {
       currentUser = (await supabase.auth.getUser()).data.user;
       await loadProfile();
+      // Save avatar if selected
+      if (pendingAvatar && currentUser) {
+        await supabase.from('profiles').update({ avatar_url: pendingAvatar }).eq('id', currentUser.id);
+        userProfile!.avatar_url = pendingAvatar;
+        updateSidebarAvatar();
+      }
+      pendingAvatar = '';
       hideAuthPage();
       updateUIForAuth();
       await loadLikedSongs();
@@ -977,6 +1082,7 @@ function showResults() {
   hideAllPages();
   landing.classList.add('hidden');
   resultsPage.classList.remove('hidden');
+  savePageState('results');
 }
 
 function showLanding() {
@@ -987,21 +1093,289 @@ function showLanding() {
   audio.pause();
   audio.src = '';
   pageHistory = [];
+  savePageState('landing');
 }
 
 function showLikedPage() {
   hideAllPages();
   likedPage.classList.remove('hidden');
+  savePageState('liked');
 }
 
 function showPlaylistsPageView() {
   hideAllPages();
   playlistsPage.classList.remove('hidden');
+  savePageState('playlists');
 }
 
 function showPlaylistDetailView() {
   hideAllPages();
   playlistDetailPage.classList.remove('hidden');
+  savePageState('playlistDetail', { playlistId: currentPlaylistId });
+}
+
+function showSocialPage() {
+  if (!currentUser) { showAuthPage(); return; }
+
+  if (resultsPage.classList.contains('hidden') && socialPage.classList.contains('hidden')) pushPage('landing');
+  else if (!resultsPage.classList.contains('hidden')) pushPage('results');
+
+  hideAllPages();
+  socialPage.classList.remove('hidden');
+  savePageState('social');
+  loadSocialMessages();
+  startSocialPolling();
+}
+
+function hideSocialPage() {
+  socialPage.classList.add('hidden');
+  stopSocialPolling();
+}
+
+// ===== PROFILE =====
+function showProfilePage() {
+  if (!currentUser || !userProfile) return;
+  hideAllPages();
+  profilePage.classList.remove('hidden');
+
+  profileName.value = userProfile.display_name || '';
+  profileUsername.value = userProfile.username || '';
+  profileEmail.value = currentUser.email || '';
+
+  if (userProfile.avatar_url) {
+    profileAvatar.innerHTML = `<img src="${esc(userProfile.avatar_url)}" alt="">`;
+  } else {
+    profileAvatar.innerHTML = `<svg width="48" height="48" viewBox="0 0 24 24" fill="currentColor"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/></svg>`;
+  }
+}
+
+function resizeImage(file: File, maxSize: number): Promise<string> {
+  return new Promise((resolve) => {
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const img = new Image();
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        let w = img.width, h = img.height;
+        if (w > maxSize || h > maxSize) {
+          if (w > h) { h = (h / w) * maxSize; w = maxSize; }
+          else { w = (w / h) * maxSize; h = maxSize; }
+        }
+        canvas.width = w;
+        canvas.height = h;
+        const ctx = canvas.getContext('2d')!;
+        ctx.drawImage(img, 0, 0, w, h);
+        resolve(canvas.toDataURL('image/jpeg', 0.7));
+      };
+      img.src = e.target?.result as string;
+    };
+    reader.readAsDataURL(file);
+  });
+}
+
+function updateSidebarAvatar() {
+  const sidebarAvatar = document.getElementById('sidebarAvatar') as HTMLDivElement;
+  const userAvatar = document.getElementById('userAvatar') as HTMLDivElement;
+  if (userProfile?.avatar_url) {
+    const imgHtml = `<img src="${esc(userProfile.avatar_url)}" alt="" style="width:100%;height:100%;object-fit:cover;border-radius:50%">`;
+    sidebarAvatar.innerHTML = imgHtml;
+    userAvatar.innerHTML = imgHtml;
+  } else {
+    sidebarAvatar.innerHTML = `<svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/></svg>`;
+    userAvatar.innerHTML = `<svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/></svg>`;
+  }
+}
+
+async function handleProfileSave() {
+  if (!currentUser || !userProfile) return;
+  const newName = profileName.value.trim();
+  if (!newName) { alert('Nama tidak boleh kosong'); return; }
+
+  profileSaveBtn.disabled = true;
+  profileSaveBtn.textContent = 'Menyimpan...';
+
+  try {
+    const updates: any = { display_name: newName };
+    if (profileAvatarData) updates.avatar_url = profileAvatarData;
+
+    const { error } = await supabase.from('profiles').update(updates).eq('id', currentUser.id);
+    if (error) throw error;
+
+    userProfile.display_name = newName;
+    if (profileAvatarData) userProfile.avatar_url = profileAvatarData;
+    profileAvatarData = '';
+
+    userNameDisplay.textContent = userProfile.display_name || userProfile.username;
+    sidebarName.textContent = userProfile.display_name || userProfile.username;
+    updateSidebarAvatar();
+    alert('Profile berhasil diupdate!');
+  } catch (e) {
+    console.error('[handleProfileSave]', e);
+    alert('Gagal menyimpan profile');
+  }
+
+  profileSaveBtn.disabled = false;
+  profileSaveBtn.textContent = 'Simpan Perubahan';
+}
+
+// Social: load messages from Supabase (today only, auto-reset at midnight)
+async function loadSocialMessages() {
+  if (!currentUser) return;
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const todayISO = today.toISOString();
+
+  try {
+    const { data, error } = await supabase
+      .from('social_messages')
+      .select('*')
+      .gte('created_at', todayISO)
+      .order('created_at', { ascending: true });
+
+    if (error) throw error;
+    socialMsgs = data || [];
+    renderSocialChat();
+  } catch (e) {
+    console.error('[loadSocialMessages]', e);
+  }
+}
+
+function renderSocialChat() {
+  if (socialMsgs.length === 0) {
+    socialChat.innerHTML = `
+      <div class="social-empty">
+        <svg width="48" height="48" viewBox="0 0 24 24" fill="currentColor"><path d="M20 2H4c-1.1 0-2 .9-2 2v18l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm0 14H6l-2 2V4h16v12z"/></svg>
+        Belum ada share hari ini.<br>Jadilah yang pertama!
+      </div>`;
+    return;
+  }
+
+  socialChat.innerHTML = socialMsgs.map(m => {
+    const initial = (m.username || '?')[0].toUpperCase();
+    const time = new Date(m.created_at);
+    const timeStr = time.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' });
+    const trackHtml = m.track_title ? `
+      <div class="social-msg-track" data-title="${esc(m.track_title)}" data-artist="${esc(m.track_artist || '')}" data-thumb="${esc(m.track_thumb || '')}" data-dur="${esc(m.track_duration || '')}">
+        <img class="social-msg-thumb" src="${esc(m.track_thumb || '')}" alt="">
+        <div class="social-msg-track-info">
+          <div class="social-msg-track-title">${esc(m.track_title)}</div>
+          <div class="social-msg-track-artist">${esc(m.track_artist || '')}</div>
+        </div>
+        <div class="social-msg-track-dur">${esc(m.track_duration || '')}</div>
+      </div>` : '';
+    return `
+      <div class="social-msg">
+        <div class="social-msg-header">
+          <div class="social-msg-avatar">${initial}</div>
+          <div class="social-msg-user">${esc(m.username)}</div>
+          <div class="social-msg-time">${timeStr}</div>
+        </div>
+        ${m.caption ? `<div class="social-msg-caption">${esc(m.caption)}</div>` : ''}
+        ${trackHtml}
+      </div>`;
+  }).join('');
+
+  // Click track to play
+  socialChat.querySelectorAll('.social-msg-track').forEach(el => {
+    el.addEventListener('click', () => {
+      const title = el.getAttribute('data-title') || '';
+      const artist = el.getAttribute('data-artist') || '';
+      const thumb = el.getAttribute('data-thumb') || '';
+      const dur = el.getAttribute('data-dur') || '';
+      // Search and play the track
+      searchAndPlay(title, artist);
+    });
+  });
+
+  // Scroll to bottom (chat style: newest at bottom)
+  socialChat.scrollTop = socialChat.scrollHeight;
+}
+
+async function searchAndPlay(title: string, artist: string) {
+  const query = `${title} ${artist}`.trim();
+  if (!query) return;
+  try {
+    const res = await fetch(`/api/search?q=${encodeURIComponent(query)}`);
+    const data = await res.json();
+    if (data.tracks && data.tracks.length > 0) {
+      const track = data.tracks[0];
+      queue = data.tracks;
+      queueIdx = 0;
+      playCurrent();
+    }
+  } catch (e) {
+    console.error('[searchAndPlay]', e);
+  }
+}
+
+// Social: poll for new messages every 5 seconds
+function startSocialPolling() {
+  stopSocialPolling();
+  socialPollInterval = window.setInterval(() => {
+    if (socialPage.classList.contains('hidden')) {
+      stopSocialPolling();
+      return;
+    }
+    loadSocialMessages();
+  }, 5000);
+}
+
+function stopSocialPolling() {
+  if (socialPollInterval !== null) {
+    clearInterval(socialPollInterval);
+    socialPollInterval = null;
+  }
+}
+
+// Social: send message
+async function handleShareSend() {
+  if (!currentUser || !userProfile || !shareTrack) return;
+  const caption = shareCaption.value.trim();
+
+  shareSendBtn.disabled = true;
+  shareSendBtn.textContent = 'Mengirim...';
+
+  try {
+    const { error } = await supabase.from('social_messages').insert({
+      user_id: currentUser.id,
+      username: userProfile.username || userProfile.display_name || 'Unknown',
+      track_title: shareTrack.title,
+      track_artist: shareTrack.artist,
+      track_thumb: shareTrack.thumb,
+      track_duration: shareTrack.duration,
+      caption: caption || null,
+    });
+
+    if (error) throw error;
+    hideShareModal();
+    showSocialPage();
+  } catch (e) {
+    console.error('[handleShareSend]', e);
+    alert('Gagal mengirim. Coba lagi.');
+  }
+
+  shareSendBtn.disabled = false;
+  shareSendBtn.textContent = 'Share';
+}
+
+// Share modal
+function showShareModal(track: Track) {
+  if (!currentUser) return;
+  shareTrack = track;
+  shareCaption.value = '';
+  sharePreview.innerHTML = `
+    <img class="share-preview-thumb" src="${esc(track.thumb)}" alt="">
+    <div class="share-preview-info">
+      <div class="share-preview-title">${esc(track.title)}</div>
+      <div class="share-preview-artist">${esc(track.artist)}</div>
+    </div>`;
+  shareModal.classList.remove('hidden');
+}
+
+function hideShareModal() {
+  shareModal.classList.add('hidden');
+  shareTrack = null;
+  shareCaption.value = '';
 }
 
 function hideAllPages() {
@@ -1010,6 +1384,8 @@ function hideAllPages() {
   likedPage.classList.add('hidden');
   playlistsPage.classList.add('hidden');
   playlistDetailPage.classList.add('hidden');
+  socialPage.classList.add('hidden');
+  profilePage.classList.add('hidden');
   authPage.classList.add('hidden');
 }
 
@@ -1448,6 +1824,7 @@ async function doSearch(q: string) {
   setLoading();
   rTitle.textContent = `"${q}"`;
   searchInput2.value = q;
+  localStorage.setItem('orima_last_query', q);
   activeFilter = 'all';
   rTabs.querySelectorAll('.r-tab').forEach(tab => {
     tab.classList.toggle('active', (tab as HTMLElement).dataset.f === 'all');
@@ -1519,6 +1896,11 @@ sidebarPlaylistsBtn.addEventListener('click', () => {
   showPlaylistsPage();
 });
 
+sidebarSocialBtn.addEventListener('click', () => {
+  closeSidebar();
+  showSocialPage();
+});
+
 sidebarLogoutBtn.addEventListener('click', () => {
   closeSidebar();
   handleLogout();
@@ -1533,6 +1915,11 @@ likedSongsMenuBtn.addEventListener('click', () => {
 playlistsMenuBtn.addEventListener('click', () => {
   userDropdown.classList.add('hidden');
   showPlaylistsPage();
+});
+
+socialMenuBtn.addEventListener('click', () => {
+  userDropdown.classList.add('hidden');
+  showSocialPage();
 });
 
 logoutBtn.addEventListener('click', handleLogout);
@@ -1573,6 +1960,87 @@ playlistsBack.addEventListener('click', () => {
 
 playlistDetailBack.addEventListener('click', () => {
   showPlaylistsPage();
+});
+
+// Social back
+socialBack.addEventListener('click', () => {
+  hideSocialPage();
+  const prev = popPage();
+  if (prev === 'results') showResults();
+  else showLanding();
+});
+
+goHome5.addEventListener('click', () => {
+  stopSocialPolling();
+  showLanding();
+});
+
+// Hamburger on social page
+on(hamburgerBtnSocial, 'click', (e: Event) => {
+  e.stopPropagation();
+  openSidebar();
+});
+
+// Player share buttons
+pShareBtn.addEventListener('click', () => {
+  if (queueIdx < 0 || queueIdx >= queue.length) return;
+  showShareModal(queue[queueIdx]);
+});
+
+fsShareBtn.addEventListener('click', () => {
+  if (queueIdx < 0 || queueIdx >= queue.length) return;
+  showShareModal(queue[queueIdx]);
+});
+
+// Share modal
+shareClose.addEventListener('click', hideShareModal);
+shareBackdrop.addEventListener('click', hideShareModal);
+shareSendBtn.addEventListener('click', handleShareSend);
+
+// Profile page
+profileBack.addEventListener('click', () => {
+  const prev = popPage();
+  if (prev === 'results') showResults();
+  else showLanding();
+});
+
+goHome6.addEventListener('click', () => showLanding());
+
+on(hamburgerBtnProfile, 'click', (e: Event) => {
+  e.stopPropagation();
+  openSidebar();
+});
+
+profileMenuBtn.addEventListener('click', () => {
+  userDropdown.classList.add('hidden');
+  showProfilePage();
+});
+
+sidebarProfileBtn.addEventListener('click', () => {
+  closeSidebar();
+  showProfilePage();
+});
+
+profileSaveBtn.addEventListener('click', handleProfileSave);
+
+// Profile avatar upload
+profileAvatarInput.addEventListener('change', async (e) => {
+  const file = (e.target as HTMLInputElement).files?.[0];
+  if (!file) return;
+  if (file.size > 2 * 1024 * 1024) { alert('Ukuran gambar maks 2MB'); return; }
+  const dataUrl = await resizeImage(file, 256);
+  profileAvatarData = dataUrl;
+  profileAvatar.innerHTML = `<img src="${dataUrl}" alt="">`;
+});
+
+// Register avatar upload
+regAvatarInput.addEventListener('change', async (e) => {
+  const file = (e.target as HTMLInputElement).files?.[0];
+  if (!file) return;
+  if (file.size > 2 * 1024 * 1024) { alert('Ukuran gambar maks 2MB'); return; }
+  const dataUrl = await resizeImage(file, 256);
+  pendingAvatar = dataUrl;
+  regAvatarPreview.innerHTML = `<img src="${dataUrl}" alt="">`;
 });
 
 // Create playlist button in playlists page

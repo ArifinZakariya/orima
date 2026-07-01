@@ -1135,6 +1135,15 @@ function hideSocialPage() {
 // ===== PROFILE =====
 function showProfilePage() {
   if (!currentUser || !userProfile) return;
+
+  // Push current page to history for back navigation
+  if (!socialPage.classList.contains('hidden')) pushPage('social');
+  else if (!playlistsPage.classList.contains('hidden')) pushPage('playlists');
+  else if (!playlistDetailPage.classList.contains('hidden')) pushPage('playlistDetail');
+  else if (!likedPage.classList.contains('hidden')) pushPage('liked');
+  else if (!resultsPage.classList.contains('hidden')) pushPage('results');
+  else pushPage('landing');
+
   hideAllPages();
   profilePage.classList.remove('hidden');
 
@@ -2072,6 +2081,10 @@ shareSendBtn.addEventListener('click', handleShareSend);
 profileBack.addEventListener('click', () => {
   const prev = popPage();
   if (prev === 'results') showResults();
+  else if (prev === 'liked') showLikedSongsPage();
+  else if (prev === 'playlists') showPlaylistsPage();
+  else if (prev === 'playlistDetail') showPlaylistsPage();
+  else if (prev === 'social') showSocialPage();
   else showLanding();
 });
 

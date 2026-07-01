@@ -865,16 +865,28 @@ body {
 
 .fs-info {
   position: relative; z-index: 1;
-  text-align: center; padding: 16px 32px 8px;
+  padding: 16px 32px 8px;
+}
+
+.fs-info-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.fs-info-text {
+  min-width: 0;
+  flex: 1;
 }
 
 .fs-title {
-  font-size: 20px; font-weight: 800;
+  font-size: 18px; font-weight: 800;
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
 
 .fs-artist {
-  font-size: 14px; color: var(--text-sub);
+  font-size: 13px; color: var(--text-sub);
   margin-top: 4px;
 }
 
@@ -1075,15 +1087,15 @@ body {
 @media (max-width: 480px) {
   .fs-cover-wrap { max-width: 260px; }
   .fs-controls { gap: 24px; padding: 12px 24px; }
+  .fs-info { padding: 12px 20px 8px; }
+  .fs-info-row { flex-direction: column; align-items: flex-start; gap: 8px; }
+  .fs-extra-btns { align-self: flex-start; }
 }
 
 @media (min-width: 769px) {
   .fs-cover-wrap { max-width: 280px; }
-  .fs-info { padding: 12px 32px 4px; }
-  .fs-title { font-size: 18px; }
-  .fs-artist { font-size: 13px; margin-top: 2px; }
-  .fs-extra-btns { padding: 4px 32px 6px; }
-  .fs-from { font-size: 11px; }
+  .fs-info { padding: 12px 32px 8px; }
+  .fs-extra-btns .fs-btn { padding: 6px; }
 }
 
 /* ===== RESPONSIVE ===== */
@@ -1521,9 +1533,10 @@ body {
 
 /* ===== FULLSCREEN EXTRA BUTTONS ===== */
 .fs-extra-btns {
-  position: relative; z-index: 1;
-  display: flex; align-items: center; justify-content: center;
-  gap: 20px; padding: 0 32px 8px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex-shrink: 0;
 }
 
 .fs-extra-btns .fs-btn {

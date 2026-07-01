@@ -1255,13 +1255,16 @@ function renderSocialChat() {
     const time = new Date(m.created_at);
     const timeStr = time.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' });
     const trackHtml = m.track_title ? `
-      <div class="social-msg-track" data-title="${esc(m.track_title)}" data-artist="${esc(m.track_artist || '')}" data-thumb="${esc(m.track_thumb || '')}" data-dur="${esc(m.track_duration || '')}">
+      <div class="social-msg-track" data-title="${esc(m.track_title)}" data-artist="${esc(m.track_artist || '')}" data-thumb="${esc(m.track_thumb || '')}" data-dur="${esc(m.track_duration || '')}" data-preview="${esc(m.track_preview || '')}" data-id="${esc(m.track_id || '')}">
         <img class="social-msg-thumb" src="${esc(m.track_thumb || '')}" alt="">
         <div class="social-msg-track-info">
           <div class="social-msg-track-title">${esc(m.track_title)}</div>
           <div class="social-msg-track-artist">${esc(m.track_artist || '')}</div>
         </div>
         <div class="social-msg-track-dur">${esc(m.track_duration || '')}</div>
+        <div class="social-msg-play">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
+        </div>
       </div>` : '';
     return `
       <div class="social-msg">
@@ -1282,8 +1285,51 @@ function renderSocialChat() {
       const artist = el.getAttribute('data-artist') || '';
       const thumb = el.getAttribute('data-thumb') || '';
       const dur = el.getAttribute('data-dur') || '';
-      // Search and play the track
-      searchAndPlay(title, artist);
+      const preview = el.getAttribute('data-preview') || '';
+
+      if (preview) {
+        // Play directly from preview URL
+        const track: Track = {
+          id: `social-${Date.now()}`, title, artist, thumb,
+          artistImg: '', album: '', albumId: 0,
+          duration: dur, durSec: 0,
+          preview, views: 0, viewsText: '',
+          link: '', isOfficial: false,
+        };
+        queue = [track];
+        queueIdx = 0;
+
+        // Show player & set UI
+        player.classList.remove('hidden');
+        pTitle.textContent = title;
+        pArtist.textContent = artist;
+        (pThumb.querySelector('img') as HTMLImageElement).src = thumb;
+        icoPlay.style.display = 'none';
+        icoPause.style.display = '';
+        playerBuffer.classList.remove('hidden');
+        updatePlayerLikeBtn();
+        fetchLyrics(title, artist);
+
+        if (fsOpen) {
+          fsCover.src = thumb;
+          fsBgImg.src = thumb;
+          fsTitle.textContent = title;
+          fsArtist.textContent = artist;
+        }
+
+        audio.src = preview;
+        audio.play().then(() => {
+          playerBuffer.classList.add('hidden');
+        }).catch(e => {
+          console.error('[social play]', e);
+          playerBuffer.classList.add('hidden');
+          icoPlay.style.display = '';
+          icoPause.style.display = 'none';
+        });
+      } else {
+        // Fallback: search and play via stream
+        searchAndPlay(title, artist);
+      }
     });
   });
 
@@ -1294,17 +1340,31 @@ function renderSocialChat() {
 async function searchAndPlay(title: string, artist: string) {
   const query = `${title} ${artist}`.trim();
   if (!query) return;
+  player.classList.remove('hidden');
+  pTitle.textContent = title;
+  pArtist.textContent = artist;
+  playerBuffer.classList.remove('hidden');
+  icoPlay.style.display = 'none';
+  icoPause.style.display = '';
+
   try {
     const res = await fetch(`/api/search?q=${encodeURIComponent(query)}`);
     const data = await res.json();
-    if (data.tracks && data.tracks.length > 0) {
-      const track = data.tracks[0];
-      queue = data.tracks;
+    const tracks = data.tracks || data.results || [];
+    if (tracks.length > 0) {
+      queue = tracks;
       queueIdx = 0;
-      playCurrent();
+      await playCurrent();
+    } else {
+      playerBuffer.classList.add('hidden');
+      icoPlay.style.display = '';
+      icoPause.style.display = 'none';
     }
   } catch (e) {
     console.error('[searchAndPlay]', e);
+    playerBuffer.classList.add('hidden');
+    icoPlay.style.display = '';
+    icoPause.style.display = 'none';
   }
 }
 
@@ -1343,6 +1403,8 @@ async function handleShareSend() {
       track_artist: shareTrack.artist,
       track_thumb: shareTrack.thumb,
       track_duration: shareTrack.duration,
+      track_preview: shareTrack.preview || '',
+      track_id: shareTrack.id || '',
       caption: caption || null,
     });
 

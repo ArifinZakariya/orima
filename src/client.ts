@@ -1240,7 +1240,7 @@ async function loadSocialMessages() {
       .from('social_messages')
       .select('*')
       .gte('created_at', todayISO)
-      .order('created_at', { ascending: true });
+      .order('created_at', { ascending: false });
 
     if (error) throw error;
     socialMsgs = data || [];
@@ -1346,8 +1346,7 @@ function renderSocialChat() {
     });
   });
 
-  // Scroll to bottom (chat style: newest at bottom)
-  socialChat.scrollTop = socialChat.scrollHeight;
+  // Newest at top, no auto-scroll
 }
 
 async function searchAndPlay(title: string, artist: string) {

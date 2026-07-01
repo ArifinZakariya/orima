@@ -192,6 +192,7 @@ const sidebarName = document.getElementById('sidebarName') as HTMLDivElement;
 const sidebarLikedBtn = document.getElementById('sidebarLikedBtn') as HTMLButtonElement;
 const sidebarPlaylistsBtn = document.getElementById('sidebarPlaylistsBtn') as HTMLButtonElement;
 const sidebarLogoutBtn = document.getElementById('sidebarLogoutBtn') as HTMLButtonElement;
+const hamburgerBtn = document.getElementById('hamburgerBtn') as HTMLButtonElement;
 
 // Safe null check helper
 function safe(id: string): HTMLElement | null { return document.getElementById(id); }
@@ -311,10 +312,12 @@ function hideAuthPage() {
 function updateUIForAuth() {
   if (currentUser && userProfile) {
     userBtn.classList.remove('hidden');
+    hamburgerBtn.classList.remove('hidden');
     userNameDisplay.textContent = userProfile.display_name || userProfile.username;
     sidebarName.textContent = userProfile.display_name || userProfile.username;
   } else {
     userBtn.classList.add('hidden');
+    hamburgerBtn.classList.add('hidden');
     userDropdown.classList.add('hidden');
     closeSidebar();
   }
@@ -1488,13 +1491,14 @@ backToLoginLink.addEventListener('click', (e) => { e.preventDefault(); showAuthV
 logoutBtn.addEventListener('click', handleLogout);
 
 // User menu
+hamburgerBtn.addEventListener('click', (e) => {
+  e.stopPropagation();
+  openSidebar();
+});
+
 userBtn.addEventListener('click', (e) => {
   e.stopPropagation();
-  if (window.innerWidth <= 768) {
-    openSidebar();
-  } else {
-    userDropdown.classList.toggle('hidden');
-  }
+  userDropdown.classList.toggle('hidden');
 });
 
 document.addEventListener('click', () => {
